@@ -46,7 +46,7 @@
   </div>
 
   <div class="form-group">
-    <label for="classSelect">1. Class Select Karein:</label>
+    <label for="classSelect">1. Select Class:</label>
     <select id="classSelect" onchange="loadStudents()">
       <option value="">-- Class Chuniye --</option>
       <option value="Nursery">Nursery</option>
@@ -66,7 +66,7 @@
   </div>
 
   <div class="form-group" id="studentGroup" style="display: none;">
-    <label for="studentSelect">2. Student Select Karein:</label>
+    <label for="studentSelect">2. Select Student:</label>
     <select id="studentSelect" onchange="showStudentDetails()">
       <option value="">-- Student Chuniye --</option>
     </select>
@@ -84,12 +84,12 @@
   <div id="updateForm" style="display: none;">
     <div class="form-group">
       <label for="rollNo">Roll No:</label>
-      <input type="text" id="rollNo" placeholder="Roll No Enter Karein">
+      <input type="text" id="rollNo" placeholder="Enter Roll No ">
     </div>
 
     <div class="form-group">
       <label for="motherName">Mother's Name:</label>
-      <input type="text" id="motherName" placeholder="Mother's Name Type Karein">
+      <input type="text" id="motherName" placeholder=" Type Mother's Name  ">
     </div>
 
     <div style="text-align: center;">
@@ -143,10 +143,10 @@
       } else if (Array.isArray(data)) {
         populateStudents(data);
       } else {
-        Swal.fire('Notice', 'Is class ka data empty hai ya load nahi hua.', 'info');
+        Swal.fire('Notice', 'Data empty or could not load.', 'info');
       }
     } catch (err) {
-      Swal.fire('Error!', 'Data fetch karne me time lag raha hai. Kripya dubara try karein.', 'error');
+      Swal.fire('Error!', 'Data fetching.... Please try again.', 'error');
       console.error(err);
     }
   }
@@ -154,7 +154,7 @@
   function populateStudents(data) {
     studentsData = data || [];
     const select = document.getElementById('studentSelect');
-    select.innerHTML = '<option value="">-- Student Chuniye --</option>';
+    select.innerHTML = '<option value="">-- Select Student --</option>';
     
     studentsData.forEach((st, idx) => {
       select.innerHTML += `<option value="${idx}">${st.name || st.studentName} (${st.regNo || 'No ID'})</option>`;
@@ -301,7 +301,7 @@
     })
     .catch(err => {
       document.getElementById('btnSubmit').disabled = false;
-      Swal.fire('Error!', 'Save karne me error aaya: ' + err, 'error');
+      Swal.fire('Error!', 'Save data, error occured: ' + err, 'error');
     });
   }
 </script>
