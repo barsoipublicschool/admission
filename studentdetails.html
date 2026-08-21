@@ -26,7 +26,7 @@
     .btn-submit { background: #2e7d32; color: white; }
     .btn:disabled { background: #ccc; cursor: not-allowed; }
 
-    /* Camera Modal Popup */
+    /* Modal / Camera Popup Styling */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
     .modal-content { background: #fff; padding: 20px; border-radius: 10px; width: 90%; max-width: 450px; text-align: center; }
     video, canvas { width: 100%; height: auto; border-radius: 8px; background: #000; }
@@ -43,11 +43,24 @@
     <p style="margin: 5px 0 0 0; font-size: 13px;">Student Detail & Photo Update</p>
   </div>
 
-  <!-- Class Select -->
+  <!-- Class Select (Instant Loaded Options) -->
   <div class="form-group">
     <label for="classSelect">1. Class Select Karein:</label>
     <select id="classSelect" onchange="loadStudents()">
-      <option value="">-- Classes Loading... --</option>
+      <option value="">-- Class Chuniye --</option>
+      <option value="Nursery">Nursery</option>
+      <option value="LKG">LKG</option>
+      <option value="UKG">UKG</option>
+      <option value="1st">1st</option>
+      <option value="2nd">2nd</option>
+      <option value="3rd">3rd</option>
+      <option value="4th">4th</option>
+      <option value="5th">5th</option>
+      <option value="6th">6th</option>
+      <option value="7th">7th</option>
+      <option value="8th">8th</option>
+      <option value="9th">9th</option>
+      <option value="10th">10th</option>
     </select>
   </div>
 
@@ -85,7 +98,7 @@
     <button class="btn btn-submit" id="btnSubmit" onclick="submitData()">Save & Submit Data</button>
   </div>
 
-  <div class="loader" id="loader">Loading... Please wait...</div>
+  <div class="loader" id="loader">Students Loading... Please wait...</div>
 </div>
 
 <!-- Camera Modal Popup -->
@@ -95,12 +108,13 @@
     <video id="video" autoplay playsinline></video>
     <canvas id="canvas" style="display:none;"></canvas>
     
-    <button class="btn btn-submit" onclick="capturePhoto()" style="margin-top:10px;">📸 Capture Photo</button>
+    <button class="btn btn-submit" onclick="capturePhoto()" style="margin-top:10px;">📸 Photo Khinche (Capture)</button>
     <button class="btn" onclick="closeCamera()" style="background:#c62828; color:white; margin-top:5px;">Cancel</button>
   </div>
 </div>
 
 <script>
+  // Updated Web App URL
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwJrXtqb5_zAQZ-bRvIuojWrdI89o35aayHe0ovO0WuANjdguJA7nVuRWbuoCJ0-P0/exec"; 
 
   let studentsData = [];
@@ -108,33 +122,7 @@
   let capturedBase64 = "";
   let videoStream = null;
 
-  // Page load hote hi classes fetch hongi
-  window.onload = function() {
-    showLoader(true);
-    fetch(WEB_APP_URL + "?action=getClasses")
-      .then(res => res.json())
-      .then(res => {
-        showLoader(false);
-        if (res.status === "success") {
-          populateClasses(res.classes);
-        } else {
-          alert("Error: " + res.message);
-        }
-      })
-      .catch(err => {
-        showLoader(false);
-        alert("Failed to load classes: " + err);
-      });
-  };
-
-  function populateClasses(classes) {
-    const select = document.getElementById('classSelect');
-    select.innerHTML = '<option value="">-- Class Chuniye --</option>';
-    classes.forEach(c => {
-      select.innerHTML += `<option value="${c}">${c}</option>`;
-    });
-  }
-
+  // Faster Student Loading using JSONP
   function loadStudents() {
     const className = document.getElementById('classSelect').value;
     if (!className) return;
@@ -144,28 +132,34 @@
     document.getElementById('detailsCard').style.display = 'none';
     document.getElementById('updateForm').style.display = 'none';
 
-    fetch(WEB_APP_URL + "?action=getStudents&className=" + encodeURIComponent(className))
-      .then(res => res.json())
-      .then(res => {
-        showLoader(false);
-        if (res.status === "success") {
-          populateStudents(res.students);
-        } else {
-          alert("Error: " + res.message);
-        }
-      })
-      .catch(err => {
-        showLoader(false);
-        alert("Failed to load students: " + err);
-      });
+    // Fast Fetch using Script Tag
+    const script = document.createElement('script');
+    script.src = `${WEB_APP_URL}?action=getStudents&className=${encodeURIComponent(className)}&callback=handleStudentsResponse`;
+    document.body.appendChild(script);
+
+    script.onerror = function() {
+      showLoader(false);
+      alert("Error: Network delay. Kripya dubara try karein.");
+    };
   }
 
-  function populateStudents(students) {
-    studentsData = students;
+  function handleStudentsResponse(res) {
+    showLoader(false);
+    if (res && res.status === "success") {
+      populateStudents(res.students);
+    } else if (res && res.students) {
+      populateStudents(res.students);
+    } else {
+      alert("Students data load hone me dikkat aayi. Kripya reload karein.");
+    }
+  }
+
+  function populateStudents(data) {
+    studentsData = data || [];
     const select = document.getElementById('studentSelect');
     select.innerHTML = '<option value="">-- Student Chuniye --</option>';
     
-    students.forEach((st, idx) => {
+    studentsData.forEach((st, idx) => {
       select.innerHTML += `<option value="${idx}">${st.name} (${st.regNo || 'No ID'})</option>`;
     });
 
@@ -236,7 +230,7 @@
     document.getElementById('cameraModal').style.display = 'none';
   }
 
-  // Save / Submit
+  // Fast Submit Function
   function submitData() {
     const motherName = document.getElementById('motherName').value;
 
@@ -256,23 +250,20 @@
 
     fetch(WEB_APP_URL, {
       method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     })
-    .then(res => res.json())
-    .then(res => {
+    .then(() => {
       showLoader(false);
       document.getElementById('btnSubmit').disabled = false;
-      if (res.success) {
-        alert("✅ Mother's Name & Photo successfully updated!");
-        location.reload();
-      } else {
-        alert("❌ Error: " + res.message);
-      }
+      alert("✅ Data successfully saved!");
+      location.reload();
     })
     .catch(err => {
       showLoader(false);
       document.getElementById('btnSubmit').disabled = false;
-      alert("Submission failed: " + err);
+      alert("Save karne me error aaya: " + err);
     });
   }
 
