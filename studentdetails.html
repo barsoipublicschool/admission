@@ -79,6 +79,13 @@
   </div>
 
   <div id="updateForm" style="display: none;">
+    <!-- Added Roll No Input (Column A) -->
+    <div class="form-group">
+      <label for="rollNo">Roll No (Column A):</label>
+      <input type="text" id="rollNo" placeholder="Roll No Enter Karein">
+    </div>
+
+    <!-- Mother Name Input (Column G) -->
     <div class="form-group">
       <label for="motherName">Mother's Name (Column G):</label>
       <input type="text" id="motherName" placeholder="Mothers Name Type Karein">
@@ -138,7 +145,7 @@
       }
     } catch (err) {
       showLoader(false);
-      alert("Data Fetching Error: Google Script Google Sheets ko search karne me time le raha hai. Kripya 2-3 sec baad fir try karein.");
+      alert("Data Fetching Error: Kripya 2-3 sec baad fir try karein.");
       console.error(err);
     }
   }
@@ -168,6 +175,8 @@
     document.getElementById('lblAddress').innerText = selectedStudent.address || '-';
     document.getElementById('lblContact').innerText = selectedStudent.contact || '-';
 
+    // Auto-fill Roll No if available in fetched data
+    document.getElementById('rollNo').value = selectedStudent.rollNo || selectedStudent.roll || '';
     document.getElementById('motherName').value = selectedStudent.motherName || '';
 
     if (selectedStudent.photoUrl) {
@@ -219,15 +228,19 @@
   }
 
   function submitData() {
+    const rollNo = document.getElementById('rollNo').value;
     const motherName = document.getElementById('motherName').value;
 
     if (!selectedStudent) return;
 
+    // Send rollNo, roll, along with motherName & photo
     const payload = {
       className: document.getElementById('classSelect').value,
       rowIndex: selectedStudent.rowIndex,
       regNo: selectedStudent.regNo,
       studentName: selectedStudent.name || selectedStudent.studentName,
+      rollNo: rollNo,
+      roll: rollNo,
       motherName: motherName,
       photoBase64: capturedBase64
     };
