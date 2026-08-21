@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BARSOI PUBLIC SCHOOL - Student Portal</title>
+  
+  <!-- SweetAlert2 CSS & JS -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: #f4f6f9; margin: 0; padding: 15px; }
@@ -30,8 +34,6 @@
     .modal-content { background: #fff; padding: 20px; border-radius: 10px; width: 90%; max-width: 450px; text-align: center; }
     video, canvas { width: 100%; height: auto; border-radius: 8px; background: #000; }
     .preview-img { width: 120px; height: 120px; object-fit: cover; border-radius: 50%; margin: 10px auto; border: 3px solid #1a237e; display: block; }
-
-    .loader { display: none; text-align: center; font-weight: bold; color: #1a237e; margin: 10px 0; }
   </style>
 </head>
 <body>
@@ -79,13 +81,13 @@
   </div>
 
   <div id="updateForm" style="display: none;">
-    <!-- Added Roll No Input (Column A) -->
+    <!-- Roll No Field (Column A) -->
     <div class="form-group">
       <label for="rollNo">Roll No (Column A):</label>
       <input type="text" id="rollNo" placeholder="Roll No Enter Karein">
     </div>
 
-    <!-- Mother Name Input (Column G) -->
+    <!-- Mother Name Field (Column G) -->
     <div class="form-group">
       <label for="motherName">Mother's Name (Column G):</label>
       <input type="text" id="motherName" placeholder="Mothers Name Type Karein">
@@ -98,8 +100,6 @@
 
     <button class="btn btn-submit" id="btnSubmit" onclick="submitData()">Save & Submit Data</button>
   </div>
-
-  <div class="loader" id="loader">Students Loading... Please wait...</div>
 </div>
 
 <div class="modal" id="cameraModal">
@@ -114,7 +114,7 @@
 </div>
 
 <script>
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwJrXtqb5_zAQZ-bRvIuojWrdI89o35aayHe0ovO0WuANjdguJA7nVuRWbuoCJ0-P0/exec"; 
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwkeUOJ0ecPDSW2GIkIewvqu2rN-hlCpCsFgC4nVOVeQPHGIs8rbNHhas3om2lKEQrz/exec"; 
 
   let studentsData = [];
   let selectedStudent = null;
@@ -125,7 +125,13 @@
     const className = document.getElementById('classSelect').value;
     if (!className) return;
 
-    showLoader(true);
+    Swal.fire({
+      title: 'Loading Data...',
+      text: 'Please wait while fetching students list.',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
     document.getElementById('studentGroup').style.display = 'none';
     document.getElementById('detailsCard').style.display = 'none';
     document.getElementById('updateForm').style.display = 'none';
@@ -134,18 +140,17 @@
       const response = await fetch(`${WEB_APP_URL}?action=getStudents&className=${encodeURIComponent(className)}`);
       const data = await response.json();
       
-      showLoader(false);
+      Swal.close();
       
       if (Array.isArray(data)) {
         populateStudents(data);
       } else if (data.students) {
         populateStudents(data.students);
       } else {
-        alert("Is class ka data empty hai ya format match nahi ho raha.");
+        Swal.fire('Notice', 'Is class ka data empty hai ya load nahi hua.', 'info');
       }
     } catch (err) {
-      showLoader(false);
-      alert("Data Fetching Error: Kripya 2-3 sec baad fir try karein.");
+      Swal.fire('Error!', 'Data fetch karne me time lag raha hai. Kripya dubara try karein.', 'error');
       console.error(err);
     }
   }
@@ -175,7 +180,6 @@
     document.getElementById('lblAddress').innerText = selectedStudent.address || '-';
     document.getElementById('lblContact').innerText = selectedStudent.contact || '-';
 
-    // Auto-fill Roll No if available in fetched data
     document.getElementById('rollNo').value = selectedStudent.rollNo || selectedStudent.roll || '';
     document.getElementById('motherName').value = selectedStudent.motherName || '';
 
@@ -200,7 +204,7 @@
       });
       video.srcObject = videoStream;
     } catch (err) {
-      alert("Camera error: " + err.message);
+      Swal.fire('Camera Error', err.message, 'error');
       closeCamera();
     }
   }
@@ -233,19 +237,23 @@
 
     if (!selectedStudent) return;
 
-    // Send rollNo, roll, along with motherName & photo
     const payload = {
       className: document.getElementById('classSelect').value,
       rowIndex: selectedStudent.rowIndex,
       regNo: selectedStudent.regNo,
       studentName: selectedStudent.name || selectedStudent.studentName,
       rollNo: rollNo,
-      roll: rollNo,
       motherName: motherName,
       photoBase64: capturedBase64
     };
 
-    showLoader(true);
+    Swal.fire({
+      title: 'Saving Data...',
+      text: 'Please wait while updating details.',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
     document.getElementById('btnSubmit').disabled = true;
 
     fetch(WEB_APP_URL, {
@@ -255,20 +263,20 @@
       body: JSON.stringify(payload)
     })
     .then(() => {
-      showLoader(false);
       document.getElementById('btnSubmit').disabled = false;
-      alert("✅ Data successfully saved!");
-      location.reload();
+      Swal.fire({
+        title: 'Success!',
+        text: 'Data successfully saved & updated!',
+        icon: 'success',
+        confirmButtonColor: '#1a237e'
+      }).then(() => {
+        location.reload();
+      });
     })
     .catch(err => {
-      showLoader(false);
       document.getElementById('btnSubmit').disabled = false;
-      alert("Save karne me error aaya: " + err);
+      Swal.fire('Error!', 'Save karne me error aaya: ' + err, 'error');
     });
-  }
-
-  function showLoader(show) {
-    document.getElementById('loader').style.display = show ? 'block' : 'none';
   }
 </script>
 
