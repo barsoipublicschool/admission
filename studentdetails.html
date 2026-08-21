@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BARSOI PUBLIC SCHOOL - Student Portal</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #f4f6f9; margin: 0; padding: 15px; }
+    .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    
+    .header { background-color: #1a237e; color: white; text-align: center; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .header h2 { margin: 0; font-size: 20px; }
+
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-weight: bold; margin-bottom: 5px; color: #333; }
+    select, input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+    select:focus, input:focus { border-color: #1a237e; outline: none; }
+
+    .details-card { background: #e8eaf6; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: none; }
+    .details-card p { margin: 5px 0; font-size: 14px; color: #2c3e50; }
+    .details-card strong { color: #1a237e; }
+
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+    .btn-camera { background: #0288d1; color: white; }
+    .btn-submit { background: #2e7d32; color: white; }
+    .btn:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* Modal / Camera Popup Styling */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: #fff; padding: 20px; border-radius: 10px; width: 90%; max-width: 450px; text-align: center; }
+    video, canvas { width: 100%; height: auto; border-radius: 8px; background: #000; }
+    .preview-img { width: 120px; height: 120px; object-fit: cover; border-radius: 50%; margin: 10px auto; border: 3px solid #1a237e; display: block; }
+
+    .loader { display: none; text-align: center; font-weight: bold; color: #1a237e; margin: 10px 0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h2>BARSOI PUBLIC SCHOOL</h2>
+    <p style="margin: 5px 0 0 0; font-size: 13px;">Student Detail & Photo Update</p>
+  </div>
+
+  <!-- Class Select -->
+  <div class="form-group">
+    <label for="classSelect">1. Class Select Karein:</label>
+    <select id="classSelect" onchange="loadStudents()">
+      <option value="">-- Class Chuniye --</option>
+      <!-- Script dwara load hoga -->
+    </select>
+  </div>
+
+  <!-- Student Select -->
+  <div class="form-group" id="studentGroup" style="display: none;">
+    <label for="studentSelect">2. Student Select Karein:</label>
+    <select id="studentSelect" onchange="showStudentDetails()">
+      <option value="">-- Student Chuniye --</option>
+    </select>
+  </div>
+
+  <!-- Student Info Card -->
+  <div class="details-card" id="detailsCard">
+    <p><strong>Reg No:</strong> <span id="lblReg"></span></p>
+    <p><strong>Student Name:</strong> <span id="lblName"></span></p>
+    <p><strong>Father Name:</strong> <span id="lblFather"></span></p>
+    <p><strong>DOB:</strong> <span id="lblDob"></span></p>
+    <p><strong>Address:</strong> <span id="lblAddress"></span></p>
+    <p><strong>Contact:</strong> <span id="lblContact"></span></p>
+  </div>
+
+  <!-- Form Fields for Update -->
+  <div id="updateForm" style="display: none;">
+    <div class="form-group">
+      <label for="motherName">Mother's Name (Column G):</label>
+      <input type="text" id="motherName" placeholder="Mothers Name Type Karein">
+    </div>
+
+    <!-- Photo Preview -->
+    <div style="text-align: center;">
+      <img id="photoPreview" class="preview-img" src="https://via.placeholder.com/120?text=No+Photo" alt="Photo Preview">
+      <button class="btn btn-camera" onclick="openCamera()">📷 Open Camera & Capture Photo</button>
+    </div>
+
+    <button class="btn btn-submit" id="btnSubmit" onclick="submitData()">Save & Submit Data</button>
+  </div>
+
+  <div class="loader" id="loader">Processing... Please wait...</div>
+</div>
+
+<!-- Camera Modal Popup -->
+<div class="modal" id="cameraModal">
+  <div class="modal-content">
+    <h3>Photo Capture Karein</h3>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    
+    <button class="btn btn-submit" onclick="capturePhoto()" style="margin-top:10px;">📸 Photo Khinche (Capture)</button>
+    <button class="btn" onclick="closeCamera()" style="background:#c62828; color:white; margin-top:5px;">Cancel</button>
+  </div>
+</div>
+
+<script>
+  // ** IMPORTANT ** : Agar GitHub Pages par host kar rahe hain to yahan Apps Script Web App Deployment URL dalein
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxGe0qoxqrW0ZeYvEZLUj4pPz_NxWrg5UF3KEILKOm92KrdSYn6WtUV5n_c8q0Ghmvq/exec"; 
+
+  let studentsData = [];
+  let selectedStudent = null;
+  let capturedBase64 = "";
+  let videoStream = null;
+
+  // Initial Load - Get Classes
+  window.onload = function() {
+    if (typeof google !== 'undefined') {
+      google.script.run.withSuccessHandler(populateClasses).getClassTabs();
+    } else {
+      // API Call for GitHub host
+      fetch(WEB_APP_URL + "?action=getClasses")
+        .then(res => res.json())
+        .then(data => populateClasses(data));
+    }
+  };
+
+  function populateClasses(classes) {
+    const select = document.getElementById('classSelect');
+    select.innerHTML = '<option value="">-- Class Chuniye --</option>';
+    classes.forEach(c => {
+      select.innerHTML += `<option value="${c}">${c}</option>`;
+    });
+  }
+
+  function loadStudents() {
+    const className = document.getElementById('classSelect').value;
+    if (!className) return;
+
+    showLoader(true);
+    document.getElementById('studentGroup').style.display = 'none';
+    document.getElementById('detailsCard').style.display = 'none';
+    document.getElementById('updateForm').style.display = 'none';
+
+    if (typeof google !== 'undefined') {
+      google.script.run.withSuccessHandler(populateStudents).getStudentsByClass(className);
+    }
+  }
+
+  function populateStudents(data) {
+    showLoader(false);
+    studentsData = data;
+    const select = document.getElementById('studentSelect');
+    select.innerHTML = '<option value="">-- Student Chuniye --</option>';
+    
+    data.forEach((st, idx) => {
+      select.innerHTML += `<option value="${idx}">${st.name} (${st.regNo})</option>`;
+    });
+
+    document.getElementById('studentGroup').style.display = 'block';
+  }
+
+  function showStudentDetails() {
+    const index = document.getElementById('studentSelect').value;
+    if (index === "") return;
+
+    selectedStudent = studentsData[index];
+
+    // Details Populate
+    document.getElementById('lblReg').innerText = selectedStudent.regNo;
+    document.getElementById('lblName').innerText = selectedStudent.name;
+    document.getElementById('lblFather').innerText = selectedStudent.fatherName;
+    document.getElementById('lblDob').innerText = selectedStudent.dob;
+    document.getElementById('lblAddress').innerText = selectedStudent.address;
+    document.getElementById('lblContact').innerText = selectedStudent.contact;
+
+    // Existing Mother Name
+    document.getElementById('motherName').value = selectedStudent.motherName || '';
+
+    // Existing Photo URL
+    if (selectedStudent.photoUrl) {
+      document.getElementById('photoPreview').src = selectedStudent.photoUrl;
+    } else {
+      document.getElementById('photoPreview').src = "https://via.placeholder.com/120?text=No+Photo";
+    }
+
+    document.getElementById('detailsCard').style.display = 'block';
+    document.getElementById('updateForm').style.display = 'block';
+  }
+
+  // Camera Handlers
+  async function openCamera() {
+    const modal = document.getElementById('cameraModal');
+    const video = document.getElementById('video');
+    modal.style.display = 'flex';
+
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "environment" } // Mobile ka rear/front camera open karega
+      });
+      video.srcObject = videoStream;
+    } catch (err) {
+      alert("Camera open nahi ho pa raha hai: " + err.message);
+      closeCamera();
+    }
+  }
+
+  function capturePhoto() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    capturedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+    document.getElementById('photoPreview').src = capturedBase64;
+
+    closeCamera();
+  }
+
+  function closeCamera() {
+    if (videoStream) {
+      videoStream.getTracks().forEach(track => track.stop());
+    }
+    document.getElementById('cameraModal').style.display = 'none';
+  }
+
+  // Submit Data Function
+  function submitData() {
+    const motherName = document.getElementById('motherName').value;
+
+    if (!selectedStudent) return;
+
+    const payload = {
+      className: document.getElementById('classSelect').value,
+      rowIndex: selectedStudent.rowIndex,
+      regNo: selectedStudent.regNo,
+      studentName: selectedStudent.name,
+      motherName: motherName,
+      photoBase64: capturedBase64
+    };
+
+    showLoader(true);
+    document.getElementById('btnSubmit').disabled = true;
+
+    if (typeof google !== 'undefined') {
+      google.script.run.withSuccessHandler(onSuccess).updateStudentDetails(payload);
+    }
+  }
+
+  function onSuccess(response) {
+    showLoader(false);
+    document.getElementById('btnSubmit').disabled = false;
+    
+    if (response.success) {
+      alert("✅ Data aur Photo successfully update ho gayi hai!");
+      location.reload(); // Refresh page
+    } else {
+      alert("❌ Error: " + response.message);
+    }
+  }
+
+  function showLoader(show) {
+    document.getElementById('loader').style.display = show ? 'block' : 'none';
+  }
+</script>
+
+</body>
+</html>
