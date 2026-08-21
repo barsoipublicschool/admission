@@ -26,7 +26,6 @@
     .btn-submit { background: #2e7d32; color: white; }
     .btn:disabled { background: #ccc; cursor: not-allowed; }
 
-    /* Modal / Camera Popup Styling */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
     .modal-content { background: #fff; padding: 20px; border-radius: 10px; width: 90%; max-width: 450px; text-align: center; }
     video, canvas { width: 100%; height: auto; border-radius: 8px; background: #000; }
@@ -43,7 +42,6 @@
     <p style="margin: 5px 0 0 0; font-size: 13px;">Student Detail & Photo Update</p>
   </div>
 
-  <!-- Class Select (Instant Loaded Options) -->
   <div class="form-group">
     <label for="classSelect">1. Class Select Karein:</label>
     <select id="classSelect" onchange="loadStudents()">
@@ -64,7 +62,6 @@
     </select>
   </div>
 
-  <!-- Student Select -->
   <div class="form-group" id="studentGroup" style="display: none;">
     <label for="studentSelect">2. Student Select Karein:</label>
     <select id="studentSelect" onchange="showStudentDetails()">
@@ -72,7 +69,6 @@
     </select>
   </div>
 
-  <!-- Student Info Card -->
   <div class="details-card" id="detailsCard">
     <p><strong>Reg No:</strong> <span id="lblReg"></span></p>
     <p><strong>Student Name:</strong> <span id="lblName"></span></p>
@@ -82,14 +78,12 @@
     <p><strong>Contact:</strong> <span id="lblContact"></span></p>
   </div>
 
-  <!-- Form Fields for Update -->
   <div id="updateForm" style="display: none;">
     <div class="form-group">
       <label for="motherName">Mother's Name (Column G):</label>
       <input type="text" id="motherName" placeholder="Mothers Name Type Karein">
     </div>
 
-    <!-- Photo Preview -->
     <div style="text-align: center;">
       <img id="photoPreview" class="preview-img" src="https://via.placeholder.com/120?text=No+Photo" alt="Photo Preview">
       <button class="btn btn-camera" onclick="openCamera()">📷 Open Camera & Capture Photo</button>
@@ -101,7 +95,6 @@
   <div class="loader" id="loader">Students Loading... Please wait...</div>
 </div>
 
-<!-- Camera Modal Popup -->
 <div class="modal" id="cameraModal">
   <div class="modal-content">
     <h3>Photo Capture Karein</h3>
@@ -114,7 +107,6 @@
 </div>
 
 <script>
-  // Updated Web App URL
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwJrXtqb5_zAQZ-bRvIuojWrdI89o35aayHe0ovO0WuANjdguJA7nVuRWbuoCJ0-P0/exec"; 
 
   let studentsData = [];
@@ -122,8 +114,7 @@
   let capturedBase64 = "";
   let videoStream = null;
 
-  // Faster Student Loading using JSONP
-  function loadStudents() {
+  async function loadStudents() {
     const className = document.getElementById('classSelect').value;
     if (!className) return;
 
@@ -132,25 +123,23 @@
     document.getElementById('detailsCard').style.display = 'none';
     document.getElementById('updateForm').style.display = 'none';
 
-    // Fast Fetch using Script Tag
-    const script = document.createElement('script');
-    script.src = `${WEB_APP_URL}?action=getStudents&className=${encodeURIComponent(className)}&callback=handleStudentsResponse`;
-    document.body.appendChild(script);
-
-    script.onerror = function() {
+    try {
+      const response = await fetch(`${WEB_APP_URL}?action=getStudents&className=${encodeURIComponent(className)}`);
+      const data = await response.json();
+      
       showLoader(false);
-      alert("Error: Network delay. Kripya dubara try karein.");
-    };
-  }
-
-  function handleStudentsResponse(res) {
-    showLoader(false);
-    if (res && res.status === "success") {
-      populateStudents(res.students);
-    } else if (res && res.students) {
-      populateStudents(res.students);
-    } else {
-      alert("Students data load hone me dikkat aayi. Kripya reload karein.");
+      
+      if (Array.isArray(data)) {
+        populateStudents(data);
+      } else if (data.students) {
+        populateStudents(data.students);
+      } else {
+        alert("Is class ka data empty hai ya format match nahi ho raha.");
+      }
+    } catch (err) {
+      showLoader(false);
+      alert("Data Fetching Error: Google Script Google Sheets ko search karne me time le raha hai. Kripya 2-3 sec baad fir try karein.");
+      console.error(err);
     }
   }
 
@@ -160,7 +149,7 @@
     select.innerHTML = '<option value="">-- Student Chuniye --</option>';
     
     studentsData.forEach((st, idx) => {
-      select.innerHTML += `<option value="${idx}">${st.name} (${st.regNo || 'No ID'})</option>`;
+      select.innerHTML += `<option value="${idx}">${st.name || st.studentName} (${st.regNo || 'No ID'})</option>`;
     });
 
     document.getElementById('studentGroup').style.display = 'block';
@@ -173,7 +162,7 @@
     selectedStudent = studentsData[index];
 
     document.getElementById('lblReg').innerText = selectedStudent.regNo || '-';
-    document.getElementById('lblName').innerText = selectedStudent.name || '-';
+    document.getElementById('lblName').innerText = selectedStudent.name || selectedStudent.studentName || '-';
     document.getElementById('lblFather').innerText = selectedStudent.fatherName || '-';
     document.getElementById('lblDob').innerText = selectedStudent.dob || '-';
     document.getElementById('lblAddress').innerText = selectedStudent.address || '-';
@@ -191,7 +180,6 @@
     document.getElementById('updateForm').style.display = 'block';
   }
 
-  // Camera Handlers
   async function openCamera() {
     const modal = document.getElementById('cameraModal');
     const video = document.getElementById('video');
@@ -230,7 +218,6 @@
     document.getElementById('cameraModal').style.display = 'none';
   }
 
-  // Fast Submit Function
   function submitData() {
     const motherName = document.getElementById('motherName').value;
 
@@ -240,7 +227,7 @@
       className: document.getElementById('classSelect').value,
       rowIndex: selectedStudent.rowIndex,
       regNo: selectedStudent.regNo,
-      studentName: selectedStudent.name,
+      studentName: selectedStudent.name || selectedStudent.studentName,
       motherName: motherName,
       photoBase64: capturedBase64
     };
