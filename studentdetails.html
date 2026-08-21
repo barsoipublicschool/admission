@@ -26,7 +26,7 @@
     .btn-submit { background: #2e7d32; color: white; }
     .btn:disabled { background: #ccc; cursor: not-allowed; }
 
-    /* Modal / Camera Popup Styling */
+    /* Camera Modal Popup */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
     .modal-content { background: #fff; padding: 20px; border-radius: 10px; width: 90%; max-width: 450px; text-align: center; }
     video, canvas { width: 100%; height: auto; border-radius: 8px; background: #000; }
@@ -47,8 +47,7 @@
   <div class="form-group">
     <label for="classSelect">1. Class Select Karein:</label>
     <select id="classSelect" onchange="loadStudents()">
-      <option value="">-- Class Chuniye --</option>
-      <!-- Script dwara load hoga -->
+      <option value="">-- Classes Loading... --</option>
     </select>
   </div>
 
@@ -86,7 +85,7 @@
     <button class="btn btn-submit" id="btnSubmit" onclick="submitData()">Save & Submit Data</button>
   </div>
 
-  <div class="loader" id="loader">Processing... Please wait...</div>
+  <div class="loader" id="loader">Loading... Please wait...</div>
 </div>
 
 <!-- Camera Modal Popup -->
@@ -96,30 +95,36 @@
     <video id="video" autoplay playsinline></video>
     <canvas id="canvas" style="display:none;"></canvas>
     
-    <button class="btn btn-submit" onclick="capturePhoto()" style="margin-top:10px;">📸 Photo Khinche (Capture)</button>
+    <button class="btn btn-submit" onclick="capturePhoto()" style="margin-top:10px;">📸 Capture Photo</button>
     <button class="btn" onclick="closeCamera()" style="background:#c62828; color:white; margin-top:5px;">Cancel</button>
   </div>
 </div>
 
 <script>
-  // ** IMPORTANT ** : Agar GitHub Pages par host kar rahe hain to yahan Apps Script Web App Deployment URL dalein
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxGe0qoxqrW0ZeYvEZLUj4pPz_NxWrg5UF3KEILKOm92KrdSYn6WtUV5n_c8q0Ghmvq/exec"; 
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwJrXtqb5_zAQZ-bRvIuojWrdI89o35aayHe0ovO0WuANjdguJA7nVuRWbuoCJ0-P0/exec"; 
 
   let studentsData = [];
   let selectedStudent = null;
   let capturedBase64 = "";
   let videoStream = null;
 
-  // Initial Load - Get Classes
+  // Page load hote hi classes fetch hongi
   window.onload = function() {
-    if (typeof google !== 'undefined') {
-      google.script.run.withSuccessHandler(populateClasses).getClassTabs();
-    } else {
-      // API Call for GitHub host
-      fetch(WEB_APP_URL + "?action=getClasses")
-        .then(res => res.json())
-        .then(data => populateClasses(data));
-    }
+    showLoader(true);
+    fetch(WEB_APP_URL + "?action=getClasses")
+      .then(res => res.json())
+      .then(res => {
+        showLoader(false);
+        if (res.status === "success") {
+          populateClasses(res.classes);
+        } else {
+          alert("Error: " + res.message);
+        }
+      })
+      .catch(err => {
+        showLoader(false);
+        alert("Failed to load classes: " + err);
+      });
   };
 
   function populateClasses(classes) {
@@ -139,19 +144,29 @@
     document.getElementById('detailsCard').style.display = 'none';
     document.getElementById('updateForm').style.display = 'none';
 
-    if (typeof google !== 'undefined') {
-      google.script.run.withSuccessHandler(populateStudents).getStudentsByClass(className);
-    }
+    fetch(WEB_APP_URL + "?action=getStudents&className=" + encodeURIComponent(className))
+      .then(res => res.json())
+      .then(res => {
+        showLoader(false);
+        if (res.status === "success") {
+          populateStudents(res.students);
+        } else {
+          alert("Error: " + res.message);
+        }
+      })
+      .catch(err => {
+        showLoader(false);
+        alert("Failed to load students: " + err);
+      });
   }
 
-  function populateStudents(data) {
-    showLoader(false);
-    studentsData = data;
+  function populateStudents(students) {
+    studentsData = students;
     const select = document.getElementById('studentSelect');
     select.innerHTML = '<option value="">-- Student Chuniye --</option>';
     
-    data.forEach((st, idx) => {
-      select.innerHTML += `<option value="${idx}">${st.name} (${st.regNo})</option>`;
+    students.forEach((st, idx) => {
+      select.innerHTML += `<option value="${idx}">${st.name} (${st.regNo || 'No ID'})</option>`;
     });
 
     document.getElementById('studentGroup').style.display = 'block';
@@ -163,18 +178,15 @@
 
     selectedStudent = studentsData[index];
 
-    // Details Populate
-    document.getElementById('lblReg').innerText = selectedStudent.regNo;
-    document.getElementById('lblName').innerText = selectedStudent.name;
-    document.getElementById('lblFather').innerText = selectedStudent.fatherName;
-    document.getElementById('lblDob').innerText = selectedStudent.dob;
-    document.getElementById('lblAddress').innerText = selectedStudent.address;
-    document.getElementById('lblContact').innerText = selectedStudent.contact;
+    document.getElementById('lblReg').innerText = selectedStudent.regNo || '-';
+    document.getElementById('lblName').innerText = selectedStudent.name || '-';
+    document.getElementById('lblFather').innerText = selectedStudent.fatherName || '-';
+    document.getElementById('lblDob').innerText = selectedStudent.dob || '-';
+    document.getElementById('lblAddress').innerText = selectedStudent.address || '-';
+    document.getElementById('lblContact').innerText = selectedStudent.contact || '-';
 
-    // Existing Mother Name
     document.getElementById('motherName').value = selectedStudent.motherName || '';
 
-    // Existing Photo URL
     if (selectedStudent.photoUrl) {
       document.getElementById('photoPreview').src = selectedStudent.photoUrl;
     } else {
@@ -193,11 +205,11 @@
 
     try {
       videoStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" } // Mobile ka rear/front camera open karega
+        video: { facingMode: "environment" } 
       });
       video.srcObject = videoStream;
     } catch (err) {
-      alert("Camera open nahi ho pa raha hai: " + err.message);
+      alert("Camera error: " + err.message);
       closeCamera();
     }
   }
@@ -224,7 +236,7 @@
     document.getElementById('cameraModal').style.display = 'none';
   }
 
-  // Submit Data Function
+  // Save / Submit
   function submitData() {
     const motherName = document.getElementById('motherName').value;
 
@@ -242,21 +254,26 @@
     showLoader(true);
     document.getElementById('btnSubmit').disabled = true;
 
-    if (typeof google !== 'undefined') {
-      google.script.run.withSuccessHandler(onSuccess).updateStudentDetails(payload);
-    }
-  }
-
-  function onSuccess(response) {
-    showLoader(false);
-    document.getElementById('btnSubmit').disabled = false;
-    
-    if (response.success) {
-      alert("✅ Data aur Photo successfully update ho gayi hai!");
-      location.reload(); // Refresh page
-    } else {
-      alert("❌ Error: " + response.message);
-    }
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(res => {
+      showLoader(false);
+      document.getElementById('btnSubmit').disabled = false;
+      if (res.success) {
+        alert("✅ Mother's Name & Photo successfully updated!");
+        location.reload();
+      } else {
+        alert("❌ Error: " + res.message);
+      }
+    })
+    .catch(err => {
+      showLoader(false);
+      document.getElementById('btnSubmit').disabled = false;
+      alert("Submission failed: " + err);
+    });
   }
 
   function showLoader(show) {
