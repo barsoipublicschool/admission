@@ -95,7 +95,7 @@
       text-transform: uppercase;
     }
 
-    select, input[type="text"] {
+    input[type="text"] {
       width: 100%;
       padding: 12px 14px;
       border: 1.5px solid var(--border-color);
@@ -107,7 +107,7 @@
       color: var(--text-main);
     }
 
-    select:focus, input[type="text"]:focus {
+    input[type="text"]:focus {
       border-color: var(--secondary);
       background: #fff;
       box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
@@ -201,14 +201,12 @@
     
     <div class="form-grid">
       <div class="form-group">
-        <label>Select Class</label>
-        <select id="classSelect">
-          <option value="">-- Choose Class --</option>
-        </select>
+        <label>Type Class Name</label>
+        <input type="text" id="classInput" placeholder="e.g. 8th, Class 8, 5th">
       </div>
       <div class="form-group">
         <label>Roll Number</label>
-        <input type="text" id="rollNoInput" placeholder="e.g. 1, 5, 12">
+        <input type="text" id="rollNoInput" placeholder="e.g. 1, 5, 24">
       </div>
     </div>
 
@@ -240,39 +238,16 @@
 <script>
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL1Q31ReVc8Z3fEQKGitprBdmlfaksrOL3Pk8AshQX6CPA-tlrlUdlWTsOysQny3n6/exec";
 
-  window.onload = function() {
-    fetchClasses();
-  };
-
-  // Class list load karega dropdown me
-  function fetchClasses() {
-    fetch(`${SCRIPT_URL}?action=getClasses`, { redirect: 'follow' })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === "success") {
-          const select = document.getElementById("classSelect");
-          data.classes.forEach(cls => {
-            let option = document.createElement("option");
-            option.value = cls;
-            option.textContent = cls;
-            select.appendChild(option);
-          });
-        }
-      })
-      .catch(err => console.error("Error fetching classes", err));
-  }
-
-  // Class aur Roll No se exact match karke attendance fetch karega
-  function searchByClassAndRoll() {
-    const className = document.getElementById("classSelect").value;
+  async function searchByClassAndRoll() {
+    const classNameInput = document.getElementById("classInput").value.trim();
     const rollNo = document.getElementById("rollNoInput").value.trim();
 
-    if (!className) {
-      Swal.fire('Warning', 'Kripya pehle apni Class select karein!', 'warning');
+    if (!classNameInput) {
+      Swal.fire('Warning', 'Kripya Class name type karein!', 'warning');
       return;
     }
     if (!rollNo) {
-      Swal.fire('Warning', 'Kripya apna Roll Number enter karein!', 'warning');
+      Swal.fire('Warning', 'Kripya Roll Number enter karein!', 'warning');
       return;
     }
 
@@ -280,63 +255,85 @@
     infoBox.style.display = "none";
 
     Swal.fire({
-      title: 'Searching...',
-      text: `Class ${className} (Roll: ${rollNo}) ka record dhoondh rahe hain`,
+      title: 'Searching Records...',
+      text: `Class "${classNameInput}" (Roll: ${rollNo}) ka data dhoondh rahe hain`,
       allowOutsideClick: false,
       didOpen: () => { Swal.showLoading(); }
     });
 
-    // Us class ke saare students ki list layenge
-    fetch(`${SCRIPT_URL}?action=getStudents&className=${encodeURIComponent(className)}`, { redirect: 'follow' })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === "success" && data.students) {
-          // Exact Roll No match karenge (string ya number comparison)
-          let student = data.students.find(st => {
-            let sRoll = (st.rollNo || "").toString().trim();
-            return sRoll === rollNo;
-          });
+    try {
+      // Step 1: Google Sheet se saari available classes ki list layenge
+      const classRes = await fetch(`${SCRIPT_URL}?action=getClasses`, { redirect: 'follow' });
+      const classData = await classRes.json();
 
-          if (student) {
-            // Student mil gaya, ab iska RegNo ya data use karke getParentData call karenge ya direct dikhayenge
-            // Chuki getParentData regNo se data lata hai, hum student object me available unique ID (jaise regNo) ya rowIndex use kar sakte hain
-            let searchKey = student.regNo || student.id || rollNo;
-            
-            // Agar regNo mil gaya to getParentData call karenge, warna student object se hi dikha denge
-            fetch(`${SCRIPT_URL}?action=getParentData&regNo=${encodeURIComponent(searchKey)}`, { redirect: 'follow' })
-              .then(res => res.json())
-              .then(parentRes => {
-                Swal.close();
-                if (parentRes.status === "success") {
-                  displayStudentData(parentRes.student, className);
-                } else {
-                  // Fallback: Agar getParentData match na kare toh student list wale data se render kar do
-                  displayStudentFromList(student, className);
-                }
-              })
-              .catch(() => {
-                Swal.close();
-                displayStudentFromList(student, className);
-              });
+      if (classData.status !== "success" || !classData.classes) {
+        throw new Error("Classes fetch nahi ho saki.");
+      }
 
-          } else {
-            Swal.close();
-            Swal.fire('Not Found', `Class ${className} me Roll No. ${rollNo} ka koi student nahi mila!`, 'error');
-          }
-        } else {
-          Swal.close();
-          Swal.fire('Error', 'Student list load karne me samasya aayi.', 'error');
-        }
-      })
-      .catch(err => {
+      // Step 2: User dwara type ki gayi class ko sheet ke class name se intelligently match karenge
+      let matchedClassName = classData.classes.find(cls => 
+        cls.toLowerCase().replace(/[^a-z0-9]/g, '') === classNameInput.toLowerCase().replace(/[^a-z0-9]/g, '')
+      );
+
+      // Agar exact match nahi mila toh partial match check karenge (jaise user ne '8' likha aur sheet me '8th' hai)
+      if (!matchedClassName) {
+        matchedClassName = classData.classes.find(cls => 
+          cls.toLowerCase().includes(classNameInput.toLowerCase()) || classNameInput.toLowerCase().includes(cls.toLowerCase())
+        );
+      }
+
+      if (!matchedClassName) {
         Swal.close();
-        Swal.fire('Connection Error', 'Server se connection establish nahi ho paya.', 'error');
+        Swal.fire('Not Found', `"${classNameInput}" naam ki koi class database me nahi mili!`, 'error');
+        return;
+      }
+
+      // Step 3: Us matched class ke saare students ki list fetch karenge
+      const studentRes = await fetch(`${SCRIPT_URL}?action=getStudents&className=${encodeURIComponent(matchedClassName)}`, { redirect: 'follow' });
+      const studentData = await studentRes.json();
+
+      if (studentData.status !== "success" || !studentData.students) {
+        Swal.close();
+        Swal.fire('Error', 'Student list load karne me samasya aayi.', 'error');
+        return;
+      }
+
+      // Step 4: Roll number match karenge
+      let student = studentData.students.find(st => {
+        let sRoll = (st.rollNo || "").toString().trim();
+        return sRoll === rollNo;
       });
+
+      if (!student) {
+        Swal.close();
+        Swal.fire('Not Found', `Class "${matchedClassName}" me Roll No. ${rollNo} ka student nahi mila!`, 'error');
+        return;
+      }
+
+      // Step 5: Student mil gaya, ab iske unique ID (regNo ya id) ya roll se getParentData call karenge
+      let searchKey = student.regNo || student.id || student.rollNo;
+      
+      const parentRes = await fetch(`${SCRIPT_URL}?action=getParentData&regNo=${encodeURIComponent(searchKey)}`, { redirect: 'follow' });
+      const parentData = await parentRes.json();
+
+      Swal.close();
+
+      if (parentData.status === "success" && parentData.student) {
+        renderStudentData(parentData.student, matchedClassName);
+      } else {
+        // Agar direct getParentData fail ho, toh student object ke andar agar attendance fields hain toh wahan se dikhayenge
+        renderStudentData(student, matchedClassName);
+      }
+
+    } catch (err) {
+      Swal.close();
+      Swal.fire('Connection Error', 'Server se connection me error aayi: ' + err.message, 'error');
+    }
   }
 
-  function displayStudentData(student, className) {
+  function renderStudentData(student, className) {
     document.getElementById("studentInfo").style.display = "block";
-    document.getElementById("stName").textContent = student.name || "-";
+    document.getElementById("stName").textContent = student.name || "N/A";
     document.getElementById("stClass").textContent = className;
     document.getElementById("stRoll").textContent = student.rollNo || "-";
 
@@ -344,7 +341,7 @@
     tbody.innerHTML = "";
 
     if (!student.attendance || student.attendance.length === 0) {
-      tbody.innerHTML = "<tr><td colspan='2' style='text-align:center;'>Abhi tak koi attendance record nahi hai.</td></tr>";
+      tbody.innerHTML = "<tr><td colspan='2' style='text-align:center; padding: 15px;'>Abhi tak koi attendance record update nahi hua hai.</td></tr>";
     } else {
       student.attendance.forEach(rec => {
         let tr = document.createElement("tr");
@@ -355,16 +352,6 @@
         tbody.appendChild(tr);
       });
     }
-  }
-
-  function displayStudentFromList(student, className) {
-    document.getElementById("studentInfo").style.display = "block";
-    document.getElementById("stName").textContent = student.name || "-";
-    document.getElementById("stClass").textContent = className;
-    document.getElementById("stRoll").textContent = student.rollNo || "-";
-
-    const tbody = document.getElementById("attendanceRecords");
-    tbody.innerHTML = "<tr><td colspan='2' style='text-align:center;'>Student found, par attendance history load nahi ho saki.</td></tr>";
   }
 </script>
 
