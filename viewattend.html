@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parent Portal | Barsoi Public School</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- SweetAlert2 CSS -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    :root {
+      --primary: #0f172a;
+      --secondary: #2563eb;
+      --accent: #f59e0b;
+      --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 15px;
+    }
+
+    .main-wrapper {
+      width: 100%;
+      max-width: 550px;
+      background: var(--card-bg);
+      border-radius: 20px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+
+    .school-header {
+      background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+      color: white;
+      text-align: center;
+      padding: 28px 20px;
+    }
+
+    .school-header h1 {
+      font-size: 20px;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .school-header p { font-size: 12px; opacity: 0.9; margin-bottom: 4px; }
+
+    .udise-badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(4px);
+      padding: 4px 12px;
+      border-radius: 30px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .content-body { padding: 24px; }
+
+    .portal-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 14px;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border-color);
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+      background: #f8fafc;
+      font-weight: 500;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--secondary);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    }
+
+    button {
+      padding: 12px 20px;
+      background: var(--secondary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover { opacity: 0.9; }
+
+    .student-card {
+      background: #f8fafc;
+      border: 1.5px solid var(--border-color);
+      padding: 18px;
+      border-radius: 14px;
+      display: none;
+      animation: fadeInUp 0.3s ease;
+    }
+
+    .student-info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .student-info-row span {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .table-container {
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      margin-top: 14px;
+      background: white;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      background: #f1f5f9;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 10px 12px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+    }
+    td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
+
+    .status-Present { color: #16a34a; font-weight: 700; }
+    .status-Absent { color: #dc2626; font-weight: 700; }
+
+    .footer-note {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 16px;
+      border-top: 1px solid var(--border-color);
+      background: #f8fafc;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+<div class="main-wrapper">
+  <div class="school-header">
+    <h1>Barsoi Public School</h1>
+    <p>Nehar Nagar, Barsoi, Katihar</p>
+    <div class="udise-badge">UDISE - 10101119902</div>
+  </div>
+
+  <div class="content-body">
+    <div class="portal-title">Parent Attendance Inquiry Tracker</div>
+    
+    <div class="search-box">
+      <input type="text" id="regNoInput" placeholder="Enter Registration No. (e.g., 20260801)">
+      <button onclick="searchAttendance()">Search</button>
+    </div>
+
+    <div id="studentInfo" class="student-card">
+      <div class="student-info-row"><span>Student Name:</span> <span id="stName">-</span></div>
+      <div class="student-info-row"><span>Class & Roll:</span> <span><span id="stClass">-</span> &nbsp;|&nbsp; Roll: <span id="stRoll">-</span></span></div>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Attendance Status</th>
+            </tr>
+          </thead>
+          <tbody id="attendanceRecords"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    © Barsoi Public School • Secure Parent Portal
+  </div>
+</div>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL1Q31ReVc8Z3fEQKGitprBdmlfaksrOL3Pk8AshQX6CPA-tlrlUdlWTsOysQny3n6/exec";
+
+  function searchAttendance() {
+    const regNo = document.getElementById("regNoInput").value.trim();
+    if (!regNo) { 
+      Swal.fire('Warning', 'Please enter a valid Registration Number!', 'warning'); 
+      return; 
+    }
+
+    const infoBox = document.getElementById("studentInfo");
+    infoBox.style.display = "none";
+
+    Swal.fire({
+      title: 'Searching Records...',
+      text: 'Looking up attendance history from database',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
+    fetch(`${SCRIPT_URL}?action=getParentData&regNo=${encodeURIComponent(regNo)}`)
+      .then(res => res.json())
+      .then(data => {
+        Swal.close();
+        if (data.status === "success") {
+          infoBox.style.display = "block";
+          document.getElementById("stName").textContent = data.student.name;
+          document.getElementById("stClass").textContent = data.student.class;
+          document.getElementById("stRoll").textContent = data.student.rollNo;
+
+          const tbody = document.getElementById("attendanceRecords");
+          tbody.innerHTML = "";
+
+          if (data.student.attendance.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='2' style='text-align:center;'>No attendance records found yet.</td></tr>";
+          } else {
+            data.student.attendance.forEach(rec => {
+              let tr = document.createElement("tr");
+              tr.innerHTML = `
+                <td>${rec.date}</td>
+                <td class="status-${rec.status}">${rec.status}</td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
+        } else {
+          Swal.fire('Not Found', data.message, 'error');
+        }
+      })
+      .catch(err => {
+        Swal.close();
+        Swal.fire('Error', 'Failed to retrieve details: ' + err, 'error');
+      });
+  }
+</script>
+
+</body>
+</html>
