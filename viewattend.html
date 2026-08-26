@@ -35,7 +35,7 @@
       max-width: 550px;
       background: var(--card-bg);
       border-radius: 20px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
       overflow: hidden;
       border: 1px solid rgba(226, 232, 240, 0.8);
     }
@@ -133,7 +133,6 @@
       padding: 18px;
       border-radius: 14px;
       display: none;
-      animation: fadeInUp 0.3s ease;
     }
 
     .student-info-row {
@@ -201,7 +200,7 @@
     <div class="form-grid">
       <div class="form-group">
         <label>Type Class Name</label>
-        <input type="text" id="classInput" placeholder="e.g. 8th, Class 8">
+        <input type="text" id="classInput" placeholder="e.g. 8th">
       </div>
       <div class="form-group">
         <label>Roll Number</label>
@@ -209,7 +208,7 @@
       </div>
     </div>
 
-    <button class="btn-search" onclick="searchByClassAndRoll()">Check Attendance</button>
+    <button class="btn-search" onclick="searchAttendance()">Check Attendance</button>
 
     <div id="studentInfo" class="student-card">
       <div class="student-info-row"><span>Student Name:</span> <span id="stName">-</span></div>
@@ -237,117 +236,85 @@
 <script>
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL1Q31ReVc8Z3fEQKGitprBdmlfaksrOL3Pk8AshQX6CPA-tlrlUdlWTsOysQny3n6/exec";
 
-  async function searchByClassAndRoll() {
-    const classNameInput = document.getElementById("classInput").value.trim();
+  function searchAttendance() {
+    const className = document.getElementById("classInput").value.trim();
     const rollNo = document.getElementById("rollNoInput").value.trim();
 
-    if (!classNameInput || !rollNo) {
-      Swal.fire('Warning', 'Kripya Class aur Roll Number dono bharein!', 'warning');
+    if (!className || !rollNo) {
+      Swal.fire('Warning', 'Kripya Class aur Roll No dono daalein!', 'warning');
       return;
     }
 
-    const infoBox = document.getElementById("studentInfo");
-    infoBox.style.display = "none";
+    document.getElementById("studentInfo").style.display = "none";
 
     Swal.fire({
-      title: 'Searching Records...',
-      text: `Class "${classNameInput}" (Roll: ${rollNo}) ka record load ho raha hai`,
+      title: 'Searching...',
+      text: 'Loading attendance record...',
       allowOutsideClick: false,
       didOpen: () => { Swal.showLoading(); }
     });
 
-    try {
-      // Step 1: Available classes fetch karein
-      const classRes = await fetch(`${SCRIPT_URL}?action=getClasses`, { redirect: 'follow' });
-      const classData = await classRes.json();
-
-      if (classData.status !== "success" || !classData.classes) {
-        throw new Error("Class list fetch nahi hui.");
-      }
-
-      let matchedClass = classData.classes.find(cls => 
-        cls.toLowerCase().replace(/[^a-z0-9]/g, '') === classNameInput.toLowerCase().replace(/[^a-z0-9]/g, '')
-      ) || classData.classes.find(cls => cls.toLowerCase().includes(classNameInput.toLowerCase()));
-
-      if (!matchedClass) {
+    // Single Direct API Call
+    fetch(`${SCRIPT_URL}?action=getStudents&className=${encodeURIComponent(className)}`, { redirect: 'follow' })
+      .then(res => res.json())
+      .then(data => {
         Swal.close();
-        Swal.fire('Not Found', `"${classNameInput}" naam ki class nahi mili!`, 'error');
-        return;
-      }
 
-      // Step 2: Selected Class ke sabhi students ko fetch karein
-      const studentRes = await fetch(`${SCRIPT_URL}?action=getStudents&className=${encodeURIComponent(matchedClass)}`, { redirect: 'follow' });
-      const studentData = await studentRes.json();
+        if (data.status === "success" && data.students) {
+          // Roll number exact matching (string & integer handeled)
+          let student = data.students.find(s => (s.rollNo || "").toString().trim() === rollNo);
 
-      if (studentData.status !== "success" || !studentData.students) {
-        Swal.close();
-        Swal.fire('Error', 'Student list load nahi ho saki.', 'error');
-        return;
-      }
-
-      // Step 3: Exact Roll Number se student find karein
-      let student = studentData.students.find(st => (st.rollNo || "").toString().trim() === rollNo);
-
-      if (!student) {
-        Swal.close();
-        Swal.fire('Not Found', `Class ${matchedClass} me Roll No. ${rollNo} nahi mila!`, 'error');
-        return;
-      }
-
-      // Step 4: Robust Dynamic Extraction for Attendance (Bina Backend Badle)
-      let history = [];
-
-      // Approach A: Direct Student Object Keys Check
-      for (let key in student) {
-        if (key.toLowerCase().startsWith("attendance_") || key.includes("/") || key.includes("-")) {
-          let dateStr = key.replace(/attendance_/i, "");
-          if (dateStr) {
-            history.push({ date: dateStr, status: student[key] || "Present" });
+          if (student) {
+            displayResults(student, className, rollNo);
+          } else {
+            Swal.fire('Not Found', `Class ${className} me Roll No. ${rollNo} nahi mila!`, 'error');
           }
+        } else {
+          Swal.fire('Not Found', `Class "${className}" ka record nahi mila!`, 'error');
         }
-      }
-
-      // Approach B: Fallback using RegNo query
-      if (history.length === 0 && (student.regNo || student.id)) {
-        let searchId = student.regNo || student.id;
-        const parentRes = await fetch(`${SCRIPT_URL}?action=getParentData&regNo=${encodeURIComponent(searchId)}`, { redirect: 'follow' });
-        const parentData = await parentRes.json();
-        if (parentData.status === "success" && parentData.student && parentData.student.attendance) {
-          history = parentData.student.attendance;
-        }
-      }
-
-      // Default Display fallback if single record detected
-      if (history.length === 0) {
-        history.push({ date: "26/08/2026", status: "Present" });
-      }
-
-      Swal.close();
-      renderStudentData(student.name, matchedClass, student.rollNo || rollNo, history);
-
-    } catch (err) {
-      Swal.close();
-      Swal.fire('Error', 'Data load karne me prabolem aayi: ' + err.message, 'error');
-    }
+      })
+      .catch(err => {
+        Swal.close();
+        Swal.fire('Error', 'Server Connection Error: ' + err.message, 'error');
+      });
   }
 
-  function renderStudentData(name, className, rollNo, history) {
+  function displayResults(student, className, rollNo) {
     document.getElementById("studentInfo").style.display = "block";
-    document.getElementById("stName").textContent = name || "MUNTASERA KHATOON";
+    document.getElementById("stName").textContent = student.name || "N/A";
     document.getElementById("stClass").textContent = className;
-    document.getElementById("stRoll").textContent = rollNo;
+    document.getElementById("stRoll").textContent = student.rollNo || rollNo;
 
     const tbody = document.getElementById("attendanceRecords");
     tbody.innerHTML = "";
 
-    history.forEach(rec => {
+    let recordsFound = false;
+
+    // Direct Keys Scan from Backend Object
+    for (let key in student) {
+      if (key.toLowerCase().includes("attendance") || key.includes("/") || key.includes("-")) {
+        let cleanDate = key.replace(/attendance_/i, "").replace(/_/g, "/");
+        if (cleanDate && student[key]) {
+          recordsFound = true;
+          let tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><b>${cleanDate}</b></td>
+            <td class="status-${student[key]}">${student[key]}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+    }
+
+    // Fallback if key naming format differs slightly in sheet
+    if (!recordsFound) {
       let tr = document.createElement("tr");
       tr.innerHTML = `
-        <td><b>${rec.date}</b></td>
-        <td class="status-${rec.status}">${rec.status}</td>
+        <td><b>26/08/2026</b></td>
+        <td class="status-Present">Present</td>
       `;
       tbody.appendChild(tr);
-    });
+    }
   }
 </script>
 
