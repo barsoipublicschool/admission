@@ -21,12 +21,12 @@
     * { box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 0; }
     body { background: var(--bg-gradient); color: var(--text-main); min-height: 100vh; padding: 20px; }
     
-    .container { max-width: 900px; margin: 0 auto; background: var(--card-bg); border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid var(--border-color); }
+    .container { max-width: 950px; margin: 0 auto; background: var(--card-bg); border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid var(--border-color); }
     .header { background: #1e3a8a; color: white; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
     .header h1 { font-size: 18px; font-weight: 800; text-transform: uppercase; }
     
-    .content { padding: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .content { padding: 20px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; }
     th { background: #f1f5f9; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); padding: 12px; text-align: left; }
     td { padding: 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
 
@@ -65,7 +65,7 @@
 </div>
 
 <script>
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvi-Bvdx3Ryw_UWKdPy4UmnBcPz-1js2NFGAKXc0bFN8tmpSJFSV4BePqYnEN4KA/exec"; // Apna Web App URL yahan paste karein
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvi-Bvdx3Ryw_UWKdPy4UmnBcPz-1js2NFGAKXc0bFN8tmpSJFSV4BePqYnEN4KA/exec";
 
   function loadLeaveRequests() {
     fetch(`${SCRIPT_URL}?action=getLeaves`)
@@ -77,19 +77,21 @@
         if (data.status === "success" && data.leaves.length > 0) {
           data.leaves.forEach((item, index) => {
             let tr = document.createElement("tr");
-            let statusBadge = `<span class="badge-${(item.status || 'Pending').toLowerCase()}">${item.status || 'Pending'}</span>`;
+            let currentStatus = item.status || 'Pending';
+            let statusBadge = `<span class="badge-${currentStatus.toLowerCase()}">${currentStatus}</span>`;
             
-            let actionBtns = `
-              <button class="btn-approve" onclick="updateStatus(${index}, 'Approved')">Approve</button>
-              <button class="btn-reject" onclick="updateStatus(${index}, 'Rejected')">Reject</button>
-            `;
+            // Fix: Agar Pending hai tabhi buttons dikheinge, warna Approved/Rejected text dikhega
+            let actionBtns = (currentStatus === 'Pending') ? `
+              <button class="btn-approve" onclick="updateStatus(${index + 2}, 'Approved')">Approve</button>
+              <button class="btn-reject" onclick="updateStatus(${index + 2}, 'Rejected')">Reject</button>
+            ` : `<small style="color:#64748b;">Done</small>`;
 
             tr.innerHTML = `
-              <div><b>${item.studentName}</b><br><small style="color:#64748b">Class: ${item.className} | Roll: ${item.rollNo}</small></td>
+              <td><b>${item.studentName}</b><br><small style="color:#64748b">Class: ${item.className} | Roll: ${item.rollNo}</small></td>
               <td>${item.fromDate} to ${item.toDate}</td>
               <td>${item.reason}</td>
               <td>${statusBadge}</td>
-              <td>${item.status ? item.status : actionBtns}</td>
+              <td>${actionBtns}</td>
             `;
             tbody.appendChild(tr);
           });
@@ -110,20 +112,29 @@
       confirmButtonText: 'Yes',
     }).then((result) => {
       if (result.isConfirmed) {
-        const formData = new URLSearchParams();
-        formData.append("action", "updateLeaveStatus");
-        formData.append("rowIndex", rowIdx);
-        formData.append("status", newStatus);
+        Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
-        fetch(SCRIPT_URL, { method: "POST", body: formData })
+        // Fast GET Method to avoid CORS delays on GitHub Pages
+        const params = new URLSearchParams({
+          action: "updateLeaveStatus",
+          rowIndex: rowIdx,
+          status: newStatus
+        });
+
+        fetch(`${SCRIPT_URL}?${params.toString()}`)
           .then(res => res.json())
           .then(data => {
+            Swal.close();
             if (data.status === "success") {
               Swal.fire('Updated!', `Application has been ${newStatus}.`, 'success');
               loadLeaveRequests();
             } else {
               Swal.fire('Error', 'Update nahi ho paya.', 'error');
             }
+          })
+          .catch(err => {
+            Swal.close();
+            Swal.fire('Error', 'Server error!', 'error');
           });
       }
     });
