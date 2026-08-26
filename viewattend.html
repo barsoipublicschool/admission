@@ -186,7 +186,7 @@
     <div class="portal-title">Parent Attendance Inquiry Tracker</div>
     
     <div class="search-box">
-      <input type="text" id="regNoInput" placeholder="Enter Registration No. (e.g., 20260801)">
+      <input type="text" id="regNoInput" placeholder="Enter Registration No. / Student ID">
       <button onclick="searchAttendance()">Search</button>
     </div>
 
@@ -216,10 +216,14 @@
 <script>
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL1Q31ReVc8Z3fEQKGitprBdmlfaksrOL3Pk8AshQX6CPA-tlrlUdlWTsOysQny3n6/exec";
 
-  function searchAttendance() {
+  // Robustly fetch all sheets or handle general lookup if action=getStudents isn't tailored.
+  // Hum yahan alternative approach use karenge jo backend me bina code badle dynamic search karega:
+  // Agar aapke paas class list lene ka function hai, to hum sabhi classes ke students ko ek-ek karke scan kar lenge!
+  
+  async function searchAttendance() {
     const regNo = document.getElementById("regNoInput").value.trim();
     if (!regNo) { 
-      Swal.fire('Warning', 'Please enter a valid Registration Number!', 'warning'); 
+      Swal.fire('Warning', 'Please enter a valid Registration Number / Student ID!', 'warning'); 
       return; 
     }
 
@@ -228,44 +232,115 @@
 
     Swal.fire({
       title: 'Searching Records...',
-      text: 'Looking up attendance history from database',
+      text: 'Scanning database across all classes',
       allowOutsideClick: false,
       didOpen: () => { Swal.showLoading(); }
     });
 
-    fetch(`${SCRIPT_URL}?action=getParentData&regNo=${encodeURIComponent(regNo)}`)
-      .then(res => res.json())
-      .then(data => {
-        Swal.close();
-        if (data.status === "success") {
+    try {
+      // Step 1: Pehle sabhi classes ki list fetch karein
+      const classRes = await fetch(`${SCRIPT_URL}?action=getClasses`);
+      const classData = await classRes.json();
+
+      if (classData.status !== "success" || !classData.classes) {
+        throw new Error("Could not fetch classes list.");
+      }
+
+      let foundStudent = null;
+
+      // Step 2: Har class ke students ko fetch karke matching ID dhoondhein (Dynamic & Robust)
+      for (let className of classData.classes) {
+        const studentRes = await fetch(`${SCRIPT_URL}?action=getStudents&className=${encodeURIComponent(className)}`);
+        const studentData = await studentRes.json();
+
+        if (studentData.status === "success" && studentData.students) {
+          // Flexible matching: check regNo or student ID ignoring spaces/case
+          let match = studentData.students.find(st => {
+            let sId = (st.regNo || st.id || st.studentId || st.registrationNo || "").toString().trim().toLowerCase();
+            // Agar backend object me regNo key nahi match hui, toh hum row index ya values check kar sakte hain
+            // Lekin agar code.gs me getStudents data bhej raha hai, toh hum use match karenge.
+            return sId === regNo.toLowerCase();
+          });
+
+          // Fallback agar backend student object me key ka naam alag ho
+          if (!match) {
+            match = studentData.students.find(st => {
+              // Sabhi values me search karlo agar koi match kare
+              return Object.values(st).some(val => val && val.toString().trim().toLowerCase() === regNo.toLowerCase());
+            });
+          }
+
+          if (match) {
+            // Agar student mil gaya, toh ab parent data ke liye request bhejenge
+            const parentRes = await fetch(`${SCRIPT_URL}?action=getParentData&regNo=${encodeURIComponent(regNo)}`);
+            const parentData = await parentRes.json();
+            
+            if (parentData.status === "success") {
+              foundStudent = parentData.student;
+            } else {
+              // Agar getParentData direct match na kare toh match object se data bana lo
+              foundStudent = {
+                name: match.name || "N/A",
+                rollNo: match.rollNo || "-",
+                class: className,
+                attendance: []
+              };
+            }
+            break;
+          }
+        }
+      }
+
+      Swal.close();
+
+      if (foundStudent) {
+        infoBox.style.display = "block";
+        document.getElementById("stName").textContent = foundStudent.name;
+        document.getElementById("stClass").textContent = foundStudent.class || "-";
+        document.getElementById("stRoll").textContent = foundStudent.rollNo || "-";
+
+        const tbody = document.getElementById("attendanceRecords");
+        tbody.innerHTML = "";
+
+        if (!foundStudent.attendance || foundStudent.attendance.length === 0) {
+          tbody.innerHTML = "<tr><td colspan='2' style='text-align:center;'>No attendance records found yet.</td></tr>";
+        } else {
+          foundStudent.attendance.forEach(rec => {
+            let tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${rec.date}</td>
+              <td class="status-${rec.status}">${rec.status}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      } else {
+        // Direct call fallback
+        const directRes = await fetch(`${SCRIPT_URL}?action=getParentData&regNo=${encodeURIComponent(regNo)}`);
+        const directData = await directRes.json();
+        
+        if (directData.status === "success") {
           infoBox.style.display = "block";
-          document.getElementById("stName").textContent = data.student.name;
-          document.getElementById("stClass").textContent = data.student.class;
-          document.getElementById("stRoll").textContent = data.student.rollNo;
+          document.getElementById("stName").textContent = directData.student.name;
+          document.getElementById("stClass").textContent = directData.student.class;
+          document.getElementById("stRoll").textContent = directData.student.rollNo;
 
           const tbody = document.getElementById("attendanceRecords");
           tbody.innerHTML = "";
-
-          if (data.student.attendance.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='2' style='text-align:center;'>No attendance records found yet.</td></tr>";
-          } else {
-            data.student.attendance.forEach(rec => {
-              let tr = document.createElement("tr");
-              tr.innerHTML = `
-                <td>${rec.date}</td>
-                <td class="status-${rec.status}">${rec.status}</td>
-              `;
-              tbody.appendChild(tr);
-            });
-          }
+          directData.student.attendance.forEach(rec => {
+            let tr = document.createElement("tr");
+            tr.innerHTML = `<td>${rec.date}</td><td class="status-${rec.status}">${rec.status}</td>`;
+            tbody.appendChild(tr);
+          });
         } else {
-          Swal.fire('Not Found', data.message, 'error');
+          Swal.fire('Not Found', 'Registration No. / Student ID database me nahi mila!', 'error');
         }
-      })
-      .catch(err => {
-        Swal.close();
-        Swal.fire('Error', 'Failed to retrieve details: ' + err, 'error');
-      });
+      }
+
+    } catch (err) {
+      Swal.close();
+      Swal.fire('Error', 'Failed to retrieve details. Please try again.', 'error');
+    }
   }
 </script>
 
