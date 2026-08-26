@@ -69,6 +69,19 @@
 <script>
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxP0hgnV4f1Gjlwrp5X6NoPQJc1Eb6OlcIbRM1FaFPcDYHwnJmK5oAsXCGnryx3HVN3/exec";
 
+  // Date Formatting Helper Function (Convert to DD/MM/YYYY)
+  function formatDateDDMMYYYY(dateStr) {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr; // Agar already clear string hai toh direct return
+    
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  }
+
   function initDashboard() {
     const cachedLeaves = localStorage.getItem("cached_leaves");
     if (cachedLeaves) {
@@ -121,9 +134,13 @@
 
       let remarkHtml = item.remark ? `<div class="remark-text"><b>Admin Note:</b> ${item.remark}</div>` : '';
 
+      // Clean DD/MM/YYYY dates
+      let formattedFrom = formatDateDDMMYYYY(item.fromDate);
+      let formattedTo = formatDateDDMMYYYY(item.toDate);
+
       tr.innerHTML = `
         <td><b>${item.studentName}</b><br><small style="color:#64748b">Class: ${item.className} | Roll: ${item.rollNo}</small></td>
-        <td>${item.fromDate} to ${item.toDate}</td>
+        <td><b>${formattedFrom}</b> to <b>${formattedTo}</b></td>
         <td><b>Reason:</b> ${item.reason}${remarkHtml}</td>
         <td>${statusBadge}</td>
         <td>${actionBtns}</td>
@@ -133,7 +150,6 @@
   }
 
   function updateStatus(rowIdx, newStatus) {
-    // Admin se reason/remark lene ke liye SweetAlert Pop-up Box
     Swal.fire({
       title: `${newStatus} Application`,
       text: `Reason / Remark add karein (Optional):`,
