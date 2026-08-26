@@ -134,7 +134,7 @@
 </div>
 
 <script>
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvi-Bvdx3Ryw_UWKdPy4UmnBcPz-1js2NFGAKXc0bFN8tmpSJFSV4BePqYnEN4KA/exec"; // Apna Web App URL yahan paste karein
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvi-Bvdx3Ryw_UWKdPy4UmnBcPz-1js2NFGAKXc0bFN8tmpSJFSV4BePqYnEN4KA/exec";
 
   function submitLeave() {
     const className = document.getElementById("className").value.trim();
@@ -151,17 +151,18 @@
 
     Swal.fire({ title: 'Submitting...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
-    // Data sending logic to Google Sheets via Apps Script
-    const formData = new URLSearchParams();
-    formData.append("action", "applyLeave");
-    formData.append("className", className);
-    formData.append("rollNo", rollNo);
-    formData.append("studentName", studentName);
-    formData.append("fromDate", fromDate);
-    formData.append("toDate", toDate);
-    formData.append("reason", reason);
+    // FAST SUBMISSION VIA GET METHOD (Bypasses CORS delay completely)
+    const params = new URLSearchParams({
+      action: "applyLeave",
+      className: className,
+      rollNo: rollNo,
+      studentName: studentName,
+      fromDate: fromDate,
+      toDate: toDate,
+      reason: reason
+    });
 
-    fetch(SCRIPT_URL, { method: "POST", body: formData })
+    fetch(`${SCRIPT_URL}?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
         Swal.close();
@@ -184,6 +185,5 @@
       });
   }
 </script>
-
 </body>
 </html>
