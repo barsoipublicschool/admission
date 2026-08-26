@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Leave Dashboard | Barsoi Public School</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    :root {
+      --primary: #0f172a;
+      --secondary: #2563eb;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+    }
+    * { box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 0; }
+    body { background: var(--bg-gradient); color: var(--text-main); min-height: 100vh; padding: 20px; }
+    
+    .container { max-width: 900px; margin: 0 auto; background: var(--card-bg); border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid var(--border-color); }
+    .header { background: #1e3a8a; color: white; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 18px; font-weight: 800; text-transform: uppercase; }
+    
+    .content { padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { background: #f1f5f9; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); padding: 12px; text-align: left; }
+    td { padding: 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
+
+    .btn-approve { background: var(--success); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 12px; }
+    .btn-reject { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 12px; margin-left: 6px; }
+    
+    .badge-approved { color: var(--success); font-weight: 700; background: #f0fdf4; padding: 4px 8px; border-radius: 6px; }
+    .badge-rejected { color: var(--danger); font-weight: 700; background: #fef2f2; padding: 4px 8px; border-radius: 6px; }
+    .badge-pending { color: #d97706; font-weight: 700; background: #fffbeb; padding: 4px 8px; border-radius: 6px; }
+  </style>
+</head>
+<body onload="loadLeaveRequests()">
+
+<div class="container">
+  <div class="header">
+    <h1>Leave Requests Management</h1>
+    <button onclick="loadLeaveRequests()" style="background:rgba(255,255,255,0.2); border:none; color:white; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600;">Refresh</button>
+  </div>
+
+  <div class="content">
+    <table>
+      <thead>
+        <tr>
+          <th>Student Details</th>
+          <th>Dates</th>
+          <th>Reason</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="leaveTableBody">
+        <tr><td colspan="5" style="text-align: center; color: #64748b;">Loading applications...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const SCRIPT_URL = "apna_google_apps_script_url_yahan_daalein"; // Apna Web App URL yahan paste karein
+
+  function loadLeaveRequests() {
+    fetch(`${SCRIPT_URL}?action=getLeaves`)
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.getElementById("leaveTableBody");
+        tbody.innerHTML = "";
+
+        if (data.status === "success" && data.leaves.length > 0) {
+          data.leaves.forEach((item, index) => {
+            let tr = document.createElement("tr");
+            let statusBadge = `<span class="badge-${(item.status || 'Pending').toLowerCase()}">${item.status || 'Pending'}</span>`;
+            
+            let actionBtns = `
+              <button class="btn-approve" onclick="updateStatus(${index}, 'Approved')">Approve</button>
+              <button class="btn-reject" onclick="updateStatus(${index}, 'Rejected')">Reject</button>
+            `;
+
+            tr.innerHTML = `
+              <div><b>${item.studentName}</b><br><small style="color:#64748b">Class: ${item.className} | Roll: ${item.rollNo}</small></td>
+              <td>${item.fromDate} to ${item.toDate}</td>
+              <td>${item.reason}</td>
+              <td>${statusBadge}</td>
+              <td>${item.status ? item.status : actionBtns}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b;">Koi pending application nahi hai.</td></tr>`;
+        }
+      })
+      .catch(err => {
+        document.getElementById("leaveTableBody").innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Failed to load data.</td></tr>`;
+      });
+  }
+
+  function updateStatus(rowIdx, newStatus) {
+    Swal.fire({
+      title: `Are you sure to ${newStatus}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const formData = new URLSearchParams();
+        formData.append("action", "updateLeaveStatus");
+        formData.append("rowIndex", rowIdx);
+        formData.append("status", newStatus);
+
+        fetch(SCRIPT_URL, { method: "POST", body: formData })
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === "success") {
+              Swal.fire('Updated!', `Application has been ${newStatus}.`, 'success');
+              loadLeaveRequests();
+            } else {
+              Swal.fire('Error', 'Update nahi ho paya.', 'error');
+            }
+          });
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
