@@ -45,7 +45,7 @@
     .school-header h1 { font-size: 18px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; }
     .school-header p { font-size: 12px; opacity: 0.85; font-weight: 500; }
     .content-body { padding: 24px; }
-    .portal-title { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 16px; }
+    .portal-title { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
     
     .form-group { display: flex; flex-direction: column; margin-bottom: 14px; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -81,6 +81,19 @@
       box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
     }
     .btn-submit:hover { background: var(--secondary-hover); }
+
+    .btn-check {
+      background: #0f172a;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn-check:hover { background: #1e293b; }
+
     .footer-note { text-align: center; font-size: 11px; color: var(--text-muted); padding: 14px; border-top: 1px solid var(--border-color); background: #f8fafc; }
   </style>
 </head>
@@ -93,7 +106,10 @@
   </div>
 
   <div class="content-body">
-    <div class="portal-title">Apply for Leave</div>
+    <div class="portal-title">
+      <span>Apply for Leave</span>
+      <button class="btn-check" onclick="checkLeaveStatus()">Check Status</button>
+    </div>
     
     <div class="form-grid">
       <div class="form-group">
@@ -134,7 +150,7 @@
 </div>
 
 <script>
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvi-Bvdx3Ryw_UWKdPy4UmnBcPz-1js2NFGAKXc0bFN8tmpSJFSV4BePqYnEN4KA/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzoS1PbwkZj808Oji3sIGoAn6IDBBbGThbSzg_zy0sDX_di-rmuh0_H_BxF-r3ZFv8k/exec";
 
   function submitLeave() {
     const className = document.getElementById("className").value.trim();
@@ -151,7 +167,6 @@
 
     Swal.fire({ title: 'Submitting...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
-    // FAST SUBMISSION VIA GET METHOD (Bypasses CORS delay completely)
     const params = new URLSearchParams({
       action: "applyLeave",
       className: className,
@@ -168,7 +183,6 @@
         Swal.close();
         if (data.status === "success") {
           Swal.fire('Success!', 'Leave application safalpurvak bhej di gayi hai.', 'success');
-          // Clear form
           document.getElementById("className").value = "";
           document.getElementById("rollNo").value = "";
           document.getElementById("studentName").value = "";
@@ -177,6 +191,51 @@
           document.getElementById("reason").value = "";
         } else {
           Swal.fire('Error', 'Kuch gadbadi ho gayi.', 'error');
+        }
+      })
+      .catch(err => {
+        Swal.close();
+        Swal.fire('Error', 'Server connection failed!', 'error');
+      });
+  }
+
+  // Student Status Check Function
+  function checkLeaveStatus() {
+    const className = document.getElementById("className").value.trim();
+    const rollNo = document.getElementById("rollNo").value.trim();
+    const studentName = document.getElementById("studentName").value.trim();
+
+    if (!className || !rollNo || !studentName) {
+      Swal.fire('Jankari Chahiye', 'Status check karne ke liye Class, Roll No aur Student Name bharein!', 'info');
+      return;
+    }
+
+    Swal.fire({ title: 'Checking status...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+    const params = new URLSearchParams({
+      action: "checkStatus",
+      className: className,
+      rollNo: rollNo,
+      studentName: studentName
+    });
+
+    fetch(`${SCRIPT_URL}?${params.toString()}`)
+      .then(res => res.json())
+      .then(data => {
+        Swal.close();
+        if (data.status === "success") {
+          let statusColor = '#d97706'; // Pending
+          if (data.leaveStatus === 'Approved') statusColor = '#16a34a';
+          if (data.leaveStatus === 'Rejected') statusColor = '#dc2626';
+
+          Swal.fire({
+            title: 'Application Status',
+            html: `<b>Status:</b> <span style="color:${statusColor}; font-size:16px;">${data.leaveStatus}</span><br><br>
+                   <small><b>Dates:</b> ${data.fromDate} to ${data.toDate}<br><b>Reason:</b> ${data.reason}</small>`,
+            icon: data.leaveStatus === 'Approved' ? 'success' : (data.leaveStatus === 'Rejected' ? 'error' : 'info')
+          });
+        } else {
+          Swal.fire('Not Found', 'Aapki koi leave application nahi mili. Kripya details check karein.', 'warning');
         }
       })
       .catch(err => {
