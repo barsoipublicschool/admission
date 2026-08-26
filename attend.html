@@ -3,148 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Student Attendance System</title>
+  <title>Teacher Attendance Portal</title>
   <style>
-    * {
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    body {
-      background-color: #f4f7f6;
-      margin: 0;
-      padding: 20px;
-    }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: #fff;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
-    h2 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 20px;
-    }
-    .form-group {
-      margin-bottom: 20px;
-    }
-    label {
-      font-weight: bold;
-      display: block;
-      margin-bottom: 8px;
-    }
-    select {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 16px;
-    }
-    .attendance-box {
-      margin-top: 20px;
-      display: none;
-    }
-    .select-all-container {
-      background: #e9ecef;
-      padding: 10px 15px;
-      border-radius: 5px;
-      font-weight: bold;
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-    }
-    th {
-      background-color: #007bff;
-      color: white;
-    }
-    tr:hover {
-      background-color: #f1f1f1;
-    }
-    input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      cursor: pointer;
-    }
-    .btn-submit {
-      width: 100%;
-      background-color: #28a745;
-      color: white;
-      padding: 12px;
-      border: none;
-      border-radius: 5px;
-      font-size: 18px;
-      cursor: pointer;
-      margin-top: 20px;
-    }
-    .btn-submit:hover {
-      background-color: #218838;
-    }
-    .loader {
-      text-align: center;
-      display: none;
-      font-size: 18px;
-      color: #007bff;
-      margin: 15px 0;
-    }
+    * { box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { background: #f4f7f6; padding: 20px; margin: 0; }
+    .container { max-width: 700px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { text-align: center; color: #333; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    select, input[type="date"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+    .attendance-box { display: none; margin-top: 15px; }
+    .select-all-box { background: #e9ecef; padding: 10px; margin-bottom: 10px; border-radius: 4px; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+    th { background: #007bff; color: white; }
+    .btn-submit { width: 100%; background: #28a745; color: white; padding: 12px; border: none; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 15px; }
+    .btn-submit:hover { background: #218838; }
+    .loader { display: none; text-align: center; color: #007bff; margin: 10px 0; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>Student Attendance</h2>
+  <h2>Mark Attendance</h2>
 
-  <!-- Class Select -->
   <div class="form-group">
-    <label for="classSelect">Select Class:</label>
+    <label>Select Date:</label>
+    <input type="date" id="attDate">
+  </div>
+
+  <div class="form-group">
+    <label>Select Class:</label>
     <select id="classSelect" onchange="loadStudents()">
       <option value="">-- Choose Class --</option>
     </select>
   </div>
 
-  <div id="loader" class="loader">Loading...</div>
+  <div id="loader" class="loader">Processing...</div>
 
-  <!-- Attendance List Box -->
   <div id="attendanceBox" class="attendance-box">
-    <div class="select-all-container">
+    <div class="select-all-box">
       <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
-      <label for="selectAll" style="margin: 0; cursor: pointer;">Select All (Present All)</label>
+      <label for="selectAll" style="display:inline; cursor:pointer;">Select All (Present)</label>
     </div>
 
     <table>
       <thead>
         <tr>
-          <th>Roll No</th>
+          <th>Roll</th>
           <th>Name</th>
-          <th>Status (Present)</th>
+          <th>Present</th>
         </tr>
       </thead>
-      <tbody id="studentList">
-        <!-- Dynamic Rows -->
-      </tbody>
+      <tbody id="studentList"></tbody>
     </table>
 
-    <button class="btn-submit" onclick="submitAttendance()">Submit Attendance</button>
+    <button class="btn-submit" onclick="submitAttendance()">Save Attendance</button>
   </div>
 </div>
 
 <script>
-  // Apka Web App URL yahan replace karein
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNDGJ0hRQYq092gKL7fDgdwEOHgWxpDLOWFoI9SACghFLwL5Os1zOUoH2OBfxa_reN/exec"; 
+  // Dynamic Deployment Web App URL Yahan Set Karein
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL1Q31ReVc8Z3fEQKGitprBdmlfaksrOL3Pk8AshQX6CPA-tlrlUdlWTsOysQny3n6/exec"; 
 
-  // Page Load hone par Class Tabs fetch karein
   window.onload = function() {
+    document.getElementById("attDate").valueAsDate = new Date();
     fetchClasses();
   };
 
@@ -162,13 +85,7 @@
             option.textContent = cls;
             select.appendChild(option);
           });
-        } else {
-          alert("Error fetching classes: " + data.message);
         }
-      })
-      .catch(err => {
-        showLoader(false);
-        console.error(err);
       });
   }
 
@@ -177,12 +94,8 @@
     const box = document.getElementById("attendanceBox");
     const tbody = document.getElementById("studentList");
     tbody.innerHTML = "";
-    document.getElementById("selectAll").checked = false;
 
-    if (!className) {
-      box.style.display = "none";
-      return;
-    }
+    if (!className) { box.style.display = "none"; return; }
 
     showLoader(true);
     fetch(`${SCRIPT_URL}?action=getStudents&className=${encodeURIComponent(className)}`)
@@ -190,81 +103,59 @@
       .then(data => {
         showLoader(false);
         if (data.status === "success") {
-          if (data.students.length === 0) {
-            alert("No students found in this class.");
-            box.style.display = "none";
-            return;
-          }
-          
           box.style.display = "block";
           data.students.forEach(st => {
             let tr = document.createElement("tr");
             tr.innerHTML = `
-              <td>${st.rollNo || '-'}</td>
+              <td>${st.rollNo}</td>
               <td>${st.name}</td>
-              <td>
-                <input type="checkbox" class="student-check" data-row="${st.rowIndex}" data-roll="${st.rollNo}">
-              </td>
+              <td><input type="checkbox" class="student-check" data-row="${st.rowIndex}"></td>
             `;
             tbody.appendChild(tr);
           });
-        } else {
-          alert("Error loading students: " + data.message);
         }
-      })
-      .catch(err => {
-        showLoader(false);
-        console.error(err);
       });
   }
 
   function toggleSelectAll(master) {
-    const checkboxes = document.querySelectorAll(".student-check");
-    checkboxes.forEach(cb => {
-      cb.checked = master.checked;
-    });
+    document.querySelectorAll(".student-check").forEach(cb => cb.checked = master.checked);
   }
 
   function submitAttendance() {
     const className = document.getElementById("classSelect").value;
-    const checkboxes = document.querySelectorAll(".student-check");
+    const rawDate = document.getElementById("attDate").value;
     
-    if (checkboxes.length === 0) return;
+    if(!rawDate) { alert("Please select date"); return; }
+    
+    const dateParts = rawDate.split("-");
+    const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
 
-    showLoader(true);
+    const checkboxes = document.querySelectorAll(".student-check");
+    let records = [];
 
-    let promises = [];
-
-    // Existing updateStudentDetails function ka upayog karke data update kar rahe hain
     checkboxes.forEach(cb => {
-      const rowIndex = cb.getAttribute("data-row");
-      const rollNo = cb.getAttribute("data-roll");
-      const isPresent = cb.checked ? "Present" : "Absent";
-
-      const payload = {
-        className: className,
-        rowIndex: rowIndex,
-        rollNo: rollNo // Re-confirming roll status
-      };
-
-      promises.push(
-        fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify(payload)
-        })
-      );
+      records.push({
+        rowIndex: cb.getAttribute("data-row"),
+        status: cb.checked ? "Present" : "Absent"
+      });
     });
 
-    Promise.all(promises)
-      .then(() => {
-        showLoader(false);
-        alert("Attendance Processed Successfully!");
+    showLoader(true);
+    fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "saveAttendance",
+        className: className,
+        date: formattedDate,
+        records: records
       })
-      .catch(err => {
-        showLoader(false);
-        alert("Error submitting attendance: " + err);
-      });
+    })
+    .then(res => res.json())
+    .then(res => {
+      showLoader(false);
+      alert(res.message);
+    });
   }
 
   function showLoader(show) {
