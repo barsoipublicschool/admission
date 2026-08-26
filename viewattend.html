@@ -78,14 +78,25 @@
       margin-bottom: 14px;
     }
 
-    .search-box {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 15px;
     }
 
-    input[type="text"] {
-      flex: 1;
+    .form-group { display: flex; flex-direction: column; }
+
+    label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+
+    select, input[type="text"] {
+      width: 100%;
       padding: 12px 14px;
       border: 1.5px solid var(--border-color);
       border-radius: 10px;
@@ -93,16 +104,18 @@
       outline: none;
       background: #f8fafc;
       font-weight: 500;
+      color: var(--text-main);
     }
 
-    input[type="text"]:focus {
+    select:focus, input[type="text"]:focus {
       border-color: var(--secondary);
       background: #fff;
       box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
     }
 
-    button {
-      padding: 12px 20px;
+    .btn-search {
+      width: 100%;
+      padding: 12px;
       background: var(--secondary);
       color: white;
       border: none;
@@ -110,9 +123,10 @@
       font-weight: 700;
       cursor: pointer;
       transition: background 0.2s;
+      margin-bottom: 20px;
     }
 
-    button:hover { opacity: 0.9; }
+    .btn-search:hover { opacity: 0.9; }
 
     .student-card {
       background: #f8fafc;
@@ -183,12 +197,22 @@
   </div>
 
   <div class="content-body">
-    <div class="portal-title">Parent Attendance Inquiry Tracker</div>
+    <div class="portal-title">Parent Attendance Inquiry Portal</div>
     
-    <div class="search-box">
-      <input type="text" id="regNoInput" placeholder="Enter Registration No. / Student ID">
-      <button onclick="searchAttendance()">Search</button>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Select Class</label>
+        <select id="classSelect">
+          <option value="">-- Choose Class --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Roll Number</label>
+        <input type="text" id="rollNoInput" placeholder="e.g. 1, 5, 12">
+      </div>
     </div>
+
+    <button class="btn-search" onclick="searchByClassAndRoll()">Check Attendance</button>
 
     <div id="studentInfo" class="student-card">
       <div class="student-info-row"><span>Student Name:</span> <span id="stName">-</span></div>
@@ -216,68 +240,131 @@
 <script>
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL1Q31ReVc8Z3fEQKGitprBdmlfaksrOL3Pk8AshQX6CPA-tlrlUdlWTsOysQny3n6/exec";
 
-  function searchAttendance() {
-    const regNo = document.getElementById("regNoInput").value.trim();
-    if (!regNo) { 
-      Swal.fire('Warning', 'Please enter a valid Registration Number / Student ID!', 'warning'); 
-      return; 
+  window.onload = function() {
+    fetchClasses();
+  };
+
+  // Class list load karega dropdown me
+  function fetchClasses() {
+    fetch(`${SCRIPT_URL}?action=getClasses`, { redirect: 'follow' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          const select = document.getElementById("classSelect");
+          data.classes.forEach(cls => {
+            let option = document.createElement("option");
+            option.value = cls;
+            option.textContent = cls;
+            select.appendChild(option);
+          });
+        }
+      })
+      .catch(err => console.error("Error fetching classes", err));
+  }
+
+  // Class aur Roll No se exact match karke attendance fetch karega
+  function searchByClassAndRoll() {
+    const className = document.getElementById("classSelect").value;
+    const rollNo = document.getElementById("rollNoInput").value.trim();
+
+    if (!className) {
+      Swal.fire('Warning', 'Kripya pehle apni Class select karein!', 'warning');
+      return;
+    }
+    if (!rollNo) {
+      Swal.fire('Warning', 'Kripya apna Roll Number enter karein!', 'warning');
+      return;
     }
 
     const infoBox = document.getElementById("studentInfo");
     infoBox.style.display = "none";
 
     Swal.fire({
-      title: 'Searching Records...',
-      text: 'Fetching details from server',
+      title: 'Searching...',
+      text: `Class ${className} (Roll: ${rollNo}) ka record dhoondh rahe hain`,
       allowOutsideClick: false,
       didOpen: () => { Swal.showLoading(); }
     });
 
-    // Directly Call Web App using Redirect Safe Fetch
-    fetch(`${SCRIPT_URL}?action=getParentData&regNo=${encodeURIComponent(regNo)}`, {
-      method: 'GET',
-      redirect: 'follow'
-    })
-    .then(res => res.json())
-    .then(data => {
-      Swal.close();
-      if (data.status === "success") {
-        infoBox.style.display = "block";
-        document.getElementById("stName").textContent = data.student.name || "-";
-        document.getElementById("stClass").textContent = data.student.class || "-";
-        document.getElementById("stRoll").textContent = data.student.rollNo || "-";
-
-        const tbody = document.getElementById("attendanceRecords");
-        tbody.innerHTML = "";
-
-        if (!data.student.attendance || data.student.attendance.length === 0) {
-          tbody.innerHTML = "<tr><td colspan='2' style='text-align:center; padding: 15px;'>No attendance history recorded.</td></tr>";
-        } else {
-          data.student.attendance.forEach(rec => {
-            let tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td>${rec.date}</td>
-              <td class="status-${rec.status}">${rec.status}</td>
-            `;
-            tbody.appendChild(tr);
+    // Us class ke saare students ki list layenge
+    fetch(`${SCRIPT_URL}?action=getStudents&className=${encodeURIComponent(className)}`, { redirect: 'follow' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success" && data.students) {
+          // Exact Roll No match karenge (string ya number comparison)
+          let student = data.students.find(st => {
+            let sRoll = (st.rollNo || "").toString().trim();
+            return sRoll === rollNo;
           });
+
+          if (student) {
+            // Student mil gaya, ab iska RegNo ya data use karke getParentData call karenge ya direct dikhayenge
+            // Chuki getParentData regNo se data lata hai, hum student object me available unique ID (jaise regNo) ya rowIndex use kar sakte hain
+            let searchKey = student.regNo || student.id || rollNo;
+            
+            // Agar regNo mil gaya to getParentData call karenge, warna student object se hi dikha denge
+            fetch(`${SCRIPT_URL}?action=getParentData&regNo=${encodeURIComponent(searchKey)}`, { redirect: 'follow' })
+              .then(res => res.json())
+              .then(parentRes => {
+                Swal.close();
+                if (parentRes.status === "success") {
+                  displayStudentData(parentRes.student, className);
+                } else {
+                  // Fallback: Agar getParentData match na kare toh student list wale data se render kar do
+                  displayStudentFromList(student, className);
+                }
+              })
+              .catch(() => {
+                Swal.close();
+                displayStudentFromList(student, className);
+              });
+
+          } else {
+            Swal.close();
+            Swal.fire('Not Found', `Class ${className} me Roll No. ${rollNo} ka koi student nahi mila!`, 'error');
+          }
+        } else {
+          Swal.close();
+          Swal.fire('Error', 'Student list load karne me samasya aayi.', 'error');
         }
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Not Found',
-          text: data.message || 'Student ID match nahi hua!'
-        });
-      }
-    })
-    .catch(err => {
-      Swal.close();
-      Swal.fire({
-        icon: 'error',
-        title: 'Connection Issue',
-        text: 'Data fetch karne me problem aayi: ' + err.message
+      })
+      .catch(err => {
+        Swal.close();
+        Swal.fire('Connection Error', 'Server se connection establish nahi ho paya.', 'error');
       });
-    });
+  }
+
+  function displayStudentData(student, className) {
+    document.getElementById("studentInfo").style.display = "block";
+    document.getElementById("stName").textContent = student.name || "-";
+    document.getElementById("stClass").textContent = className;
+    document.getElementById("stRoll").textContent = student.rollNo || "-";
+
+    const tbody = document.getElementById("attendanceRecords");
+    tbody.innerHTML = "";
+
+    if (!student.attendance || student.attendance.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='2' style='text-align:center;'>Abhi tak koi attendance record nahi hai.</td></tr>";
+    } else {
+      student.attendance.forEach(rec => {
+        let tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${rec.date}</td>
+          <td class="status-${rec.status}">${rec.status}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  }
+
+  function displayStudentFromList(student, className) {
+    document.getElementById("studentInfo").style.display = "block";
+    document.getElementById("stName").textContent = student.name || "-";
+    document.getElementById("stClass").textContent = className;
+    document.getElementById("stRoll").textContent = student.rollNo || "-";
+
+    const tbody = document.getElementById("attendanceRecords");
+    tbody.innerHTML = "<tr><td colspan='2' style='text-align:center;'>Student found, par attendance history load nahi ho saki.</td></tr>";
   }
 </script>
 
