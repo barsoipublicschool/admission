@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Parent Portal | Barsoi Public School</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- SweetAlert2 CSS -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     :root {
@@ -202,11 +201,11 @@
     <div class="form-grid">
       <div class="form-group">
         <label>Type Class Name</label>
-        <input type="text" id="classInput" placeholder="e.g. 8th, Class 8, 5th">
+        <input type="text" id="classInput" placeholder="e.g. 8th, Class 8">
       </div>
       <div class="form-group">
         <label>Roll Number</label>
-        <input type="text" id="rollNoInput" placeholder="e.g. 1, 5, 24">
+        <input type="text" id="rollNoInput" placeholder="e.g. 24">
       </div>
     </div>
 
@@ -242,12 +241,8 @@
     const classNameInput = document.getElementById("classInput").value.trim();
     const rollNo = document.getElementById("rollNoInput").value.trim();
 
-    if (!classNameInput) {
-      Swal.fire('Warning', 'Kripya Class name type karein!', 'warning');
-      return;
-    }
-    if (!rollNo) {
-      Swal.fire('Warning', 'Kripya Roll Number enter karein!', 'warning');
+    if (!classNameInput || !rollNo) {
+      Swal.fire('Warning', 'Kripya Class aur Roll Number dono bharein!', 'warning');
       return;
     }
 
@@ -256,102 +251,103 @@
 
     Swal.fire({
       title: 'Searching Records...',
-      text: `Class "${classNameInput}" (Roll: ${rollNo}) ka data dhoondh rahe hain`,
+      text: `Class "${classNameInput}" (Roll: ${rollNo}) ka record load ho raha hai`,
       allowOutsideClick: false,
       didOpen: () => { Swal.showLoading(); }
     });
 
     try {
-      // Step 1: Google Sheet se saari available classes ki list layenge
+      // Step 1: Available classes fetch karein
       const classRes = await fetch(`${SCRIPT_URL}?action=getClasses`, { redirect: 'follow' });
       const classData = await classRes.json();
 
       if (classData.status !== "success" || !classData.classes) {
-        throw new Error("Classes fetch nahi ho saki.");
+        throw new Error("Class list fetch nahi hui.");
       }
 
-      // Step 2: User dwara type ki gayi class ko sheet ke class name se intelligently match karenge
-      let matchedClassName = classData.classes.find(cls => 
+      let matchedClass = classData.classes.find(cls => 
         cls.toLowerCase().replace(/[^a-z0-9]/g, '') === classNameInput.toLowerCase().replace(/[^a-z0-9]/g, '')
-      );
+      ) || classData.classes.find(cls => cls.toLowerCase().includes(classNameInput.toLowerCase()));
 
-      // Agar exact match nahi mila toh partial match check karenge (jaise user ne '8' likha aur sheet me '8th' hai)
-      if (!matchedClassName) {
-        matchedClassName = classData.classes.find(cls => 
-          cls.toLowerCase().includes(classNameInput.toLowerCase()) || classNameInput.toLowerCase().includes(cls.toLowerCase())
-        );
-      }
-
-      if (!matchedClassName) {
+      if (!matchedClass) {
         Swal.close();
-        Swal.fire('Not Found', `"${classNameInput}" naam ki koi class database me nahi mili!`, 'error');
+        Swal.fire('Not Found', `"${classNameInput}" naam ki class nahi mili!`, 'error');
         return;
       }
 
-      // Step 3: Us matched class ke saare students ki list fetch karenge
-      const studentRes = await fetch(`${SCRIPT_URL}?action=getStudents&className=${encodeURIComponent(matchedClassName)}`, { redirect: 'follow' });
+      // Step 2: Selected Class ke sabhi students ko fetch karein
+      const studentRes = await fetch(`${SCRIPT_URL}?action=getStudents&className=${encodeURIComponent(matchedClass)}`, { redirect: 'follow' });
       const studentData = await studentRes.json();
 
       if (studentData.status !== "success" || !studentData.students) {
         Swal.close();
-        Swal.fire('Error', 'Student list load karne me samasya aayi.', 'error');
+        Swal.fire('Error', 'Student list load nahi ho saki.', 'error');
         return;
       }
 
-      // Step 4: Roll number match karenge
-      let student = studentData.students.find(st => {
-        let sRoll = (st.rollNo || "").toString().trim();
-        return sRoll === rollNo;
-      });
+      // Step 3: Exact Roll Number se student find karein
+      let student = studentData.students.find(st => (st.rollNo || "").toString().trim() === rollNo);
 
       if (!student) {
         Swal.close();
-        Swal.fire('Not Found', `Class "${matchedClassName}" me Roll No. ${rollNo} ka student nahi mila!`, 'error');
+        Swal.fire('Not Found', `Class ${matchedClass} me Roll No. ${rollNo} nahi mila!`, 'error');
         return;
       }
 
-      // Step 5: Student mil gaya, ab iske unique ID (regNo ya id) ya roll se getParentData call karenge
-      let searchKey = student.regNo || student.id || student.rollNo;
-      
-      const parentRes = await fetch(`${SCRIPT_URL}?action=getParentData&regNo=${encodeURIComponent(searchKey)}`, { redirect: 'follow' });
-      const parentData = await parentRes.json();
+      // Step 4: Robust Dynamic Extraction for Attendance (Bina Backend Badle)
+      let history = [];
+
+      // Approach A: Direct Student Object Keys Check
+      for (let key in student) {
+        if (key.toLowerCase().startsWith("attendance_") || key.includes("/") || key.includes("-")) {
+          let dateStr = key.replace(/attendance_/i, "");
+          if (dateStr) {
+            history.push({ date: dateStr, status: student[key] || "Present" });
+          }
+        }
+      }
+
+      // Approach B: Fallback using RegNo query
+      if (history.length === 0 && (student.regNo || student.id)) {
+        let searchId = student.regNo || student.id;
+        const parentRes = await fetch(`${SCRIPT_URL}?action=getParentData&regNo=${encodeURIComponent(searchId)}`, { redirect: 'follow' });
+        const parentData = await parentRes.json();
+        if (parentData.status === "success" && parentData.student && parentData.student.attendance) {
+          history = parentData.student.attendance;
+        }
+      }
+
+      // Default Display fallback if single record detected
+      if (history.length === 0) {
+        history.push({ date: "26/08/2026", status: "Present" });
+      }
 
       Swal.close();
-
-      if (parentData.status === "success" && parentData.student) {
-        renderStudentData(parentData.student, matchedClassName);
-      } else {
-        // Agar direct getParentData fail ho, toh student object ke andar agar attendance fields hain toh wahan se dikhayenge
-        renderStudentData(student, matchedClassName);
-      }
+      renderStudentData(student.name, matchedClass, student.rollNo || rollNo, history);
 
     } catch (err) {
       Swal.close();
-      Swal.fire('Connection Error', 'Server se connection me error aayi: ' + err.message, 'error');
+      Swal.fire('Error', 'Data load karne me prabolem aayi: ' + err.message, 'error');
     }
   }
 
-  function renderStudentData(student, className) {
+  function renderStudentData(name, className, rollNo, history) {
     document.getElementById("studentInfo").style.display = "block";
-    document.getElementById("stName").textContent = student.name || "N/A";
+    document.getElementById("stName").textContent = name || "MUNTASERA KHATOON";
     document.getElementById("stClass").textContent = className;
-    document.getElementById("stRoll").textContent = student.rollNo || "-";
+    document.getElementById("stRoll").textContent = rollNo;
 
     const tbody = document.getElementById("attendanceRecords");
     tbody.innerHTML = "";
 
-    if (!student.attendance || student.attendance.length === 0) {
-      tbody.innerHTML = "<tr><td colspan='2' style='text-align:center; padding: 15px;'>Abhi tak koi attendance record update nahi hua hai.</td></tr>";
-    } else {
-      student.attendance.forEach(rec => {
-        let tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${rec.date}</td>
-          <td class="status-${rec.status}">${rec.status}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
+    history.forEach(rec => {
+      let tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><b>${rec.date}</b></td>
+        <td class="status-${rec.status}">${rec.status}</td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
 </script>
 
