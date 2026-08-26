@@ -65,26 +65,30 @@
 </div>
 
 <script>
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvi-Bvdx3Ryw_UWKdPy4UmnBcPz-1js2NFGAKXc0bFN8tmpSJFSV4BePqYnEN4KA/exec";
+  // Naya Web App URL update kar diya gaya hai
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzoS1PbwkZj808Oji3sIGoAn6IDBBbGThbSzg_zy0sDX_di-rmuh0_H_BxF-r3ZFv8k/exec";
 
   function loadLeaveRequests() {
-    fetch(`${SCRIPT_URL}?action=getLeaves`)
+    const tbody = document.getElementById("leaveTableBody");
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b;">Loading applications...</td></tr>`;
+
+    // Timestamp add karne se browser cache ki problem khatam ho jati hai aur fast load hota hai
+    fetch(`${SCRIPT_URL}?action=getLeaves&_t=${new Date().getTime()}`)
       .then(res => res.json())
       .then(data => {
-        const tbody = document.getElementById("leaveTableBody");
         tbody.innerHTML = "";
 
-        if (data.status === "success" && data.leaves.length > 0) {
-          data.leaves.forEach((item, index) => {
+        if (data.status === "success" && data.leaves && data.leaves.length > 0) {
+          data.leaves.forEach((item) => {
             let tr = document.createElement("tr");
             let currentStatus = item.status || 'Pending';
             let statusBadge = `<span class="badge-${currentStatus.toLowerCase()}">${currentStatus}</span>`;
             
-            // Fix: Agar Pending hai tabhi buttons dikheinge, warna Approved/Rejected text dikhega
+            // Pending hone par hi Approve/Reject button dikhega
             let actionBtns = (currentStatus === 'Pending') ? `
-              <button class="btn-approve" onclick="updateStatus(${index + 2}, 'Approved')">Approve</button>
-              <button class="btn-reject" onclick="updateStatus(${index + 2}, 'Rejected')">Reject</button>
-            ` : `<small style="color:#64748b;">Done</small>`;
+              <button class="btn-approve" onclick="updateStatus(${item.rowIndex}, 'Approved')">Approve</button>
+              <button class="btn-reject" onclick="updateStatus(${item.rowIndex}, 'Rejected')">Reject</button>
+            ` : `<small style="color:#64748b; font-weight:600;">Done</small>`;
 
             tr.innerHTML = `
               <td><b>${item.studentName}</b><br><small style="color:#64748b">Class: ${item.className} | Roll: ${item.rollNo}</small></td>
@@ -100,7 +104,7 @@
         }
       })
       .catch(err => {
-        document.getElementById("leaveTableBody").innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Failed to load data.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Failed to load data. Please check connection.</td></tr>`;
       });
   }
 
@@ -114,11 +118,12 @@
       if (result.isConfirmed) {
         Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
-        // Fast GET Method to avoid CORS delays on GitHub Pages
+        // Fast GET Request for instant status update without CORS blocking
         const params = new URLSearchParams({
           action: "updateLeaveStatus",
           rowIndex: rowIdx,
-          status: newStatus
+          status: newStatus,
+          _t: new Date().getTime()
         });
 
         fetch(`${SCRIPT_URL}?${params.toString()}`)
