@@ -10,8 +10,11 @@
     :root {
       --primary: #0f172a;
       --secondary: #2563eb;
-      --accent: #f59e0b;
-      --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      --secondary-hover: #1d4ed8;
+      --success-bg: #f0fdf4;
+      --success-text: #16a34a;
+      --danger-text: #dc2626;
+      --bg-gradient: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
       --card-bg: #ffffff;
       --text-main: #1e293b;
       --text-muted: #64748b;
@@ -32,40 +35,42 @@
 
     .main-wrapper {
       width: 100%;
-      max-width: 550px;
+      max-width: 500px;
       background: var(--card-bg);
-      border-radius: 20px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+      border-radius: 24px;
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15);
       overflow: hidden;
-      border: 1px solid rgba(226, 232, 240, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      transition: all 0.3s ease;
     }
 
     .school-header {
-      background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
       color: white;
       text-align: center;
-      padding: 28px 20px;
+      padding: 30px 20px;
+      position: relative;
     }
 
     .school-header h1 {
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 800;
+      letter-spacing: 0.5px;
       text-transform: uppercase;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
-    .school-header p { font-size: 12px; opacity: 0.9; margin-bottom: 4px; }
+    .school-header p { font-size: 12px; opacity: 0.85; font-weight: 500; margin-bottom: 8px; }
 
     .udise-badge {
       display: inline-block;
       background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(4px);
-      padding: 4px 12px;
-      border-radius: 30px;
+      backdrop-filter: blur(6px);
+      padding: 4px 14px;
+      border-radius: 20px;
       font-size: 11px;
       font-weight: 600;
-      margin-top: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.25);
     }
 
     .content-body { padding: 24px; }
@@ -74,14 +79,14 @@
       font-size: 15px;
       font-weight: 700;
       color: var(--primary);
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
 
     .form-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-bottom: 15px;
+      margin-bottom: 16px;
     }
 
     .form-group { display: flex; flex-direction: column; }
@@ -90,20 +95,22 @@
       font-size: 11px;
       font-weight: 700;
       color: var(--text-muted);
-      margin-bottom: 5px;
+      margin-bottom: 6px;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     input[type="text"] {
       width: 100%;
       padding: 12px 14px;
       border: 1.5px solid var(--border-color);
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 14px;
       outline: none;
       background: #f8fafc;
-      font-weight: 500;
+      font-weight: 600;
       color: var(--text-main);
+      transition: all 0.2s;
     }
 
     input[type="text"]:focus {
@@ -114,47 +121,62 @@
 
     .btn-search {
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       background: var(--secondary);
       color: white;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       font-weight: 700;
+      font-size: 14px;
       cursor: pointer;
-      transition: background 0.2s;
-      margin-bottom: 20px;
+      transition: background 0.2s, transform 0.1s;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
     }
 
-    .btn-search:hover { opacity: 0.9; }
+    .btn-search:hover { background: var(--secondary-hover); }
+    .btn-search:active { transform: scale(0.98); }
 
+    /* Student Result Dashboard Card */
     .student-card {
-      background: #f8fafc;
-      border: 1.5px solid var(--border-color);
-      padding: 18px;
-      border-radius: 14px;
       display: none;
+      animation: fadeIn 0.4s ease forwards;
     }
 
-    .student-info-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 13px;
-      color: var(--text-muted);
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    .student-info-row span {
-      font-weight: 700;
-      color: var(--text-main);
+    .profile-banner {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 1.5px solid #bbf7d0;
+      padding: 16px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .profile-name {
+      font-size: 16px;
+      font-weight: 800;
+      color: #166534;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .profile-meta {
+      font-size: 12px;
+      color: #15803d;
+      font-weight: 600;
     }
 
     .table-container {
       max-height: 280px;
       overflow-y: auto;
       border: 1px solid var(--border-color);
-      border-radius: 10px;
-      margin-top: 14px;
+      border-radius: 12px;
       background: white;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
     }
 
     table { width: 100%; border-collapse: collapse; }
@@ -164,21 +186,22 @@
       font-weight: 700;
       text-transform: uppercase;
       color: var(--text-muted);
-      padding: 10px 12px;
+      padding: 12px 14px;
       text-align: left;
       position: sticky;
       top: 0;
+      border-bottom: 1px solid var(--border-color);
     }
-    td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
+    td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid #f8fafc; font-weight: 600; }
 
-    .status-Present { color: #16a34a; font-weight: 700; }
-    .status-Absent { color: #dc2626; font-weight: 700; }
+    .status-Present { color: var(--success-text); background: var(--success-bg); padding: 4px 10px; border-radius: 20px; display: inline-block; font-size: 11px; font-weight: 700; }
+    .status-Absent { color: var(--danger-text); background: #fef2f2; padding: 4px 10px; border-radius: 20px; display: inline-block; font-size: 11px; font-weight: 700; }
 
     .footer-note {
       text-align: center;
       font-size: 11px;
       color: var(--text-muted);
-      padding: 16px;
+      padding: 14px;
       border-top: 1px solid var(--border-color);
       background: #f8fafc;
       font-weight: 500;
@@ -195,31 +218,37 @@
   </div>
 
   <div class="content-body">
-    <div class="portal-title">Parent Attendance Inquiry Portal</div>
-    
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Type Class Name</label>
-        <input type="text" id="classInput" placeholder="e.g. 8th">
+    <!-- Search Inputs Section (Login View) -->
+    <div id="searchSection">
+      <div class="portal-title">Parent Attendance Portal</div>
+      
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Class Name</label>
+          <input type="text" id="classInput" placeholder="e.g. 8th">
+        </div>
+        <div class="form-group">
+          <label>Roll Number</label>
+          <input type="text" id="rollNoInput" placeholder="e.g. 24">
+        </div>
       </div>
-      <div class="form-group">
-        <label>Roll Number</label>
-        <input type="text" id="rollNoInput" placeholder="e.g. 24">
-      </div>
+
+      <button class="btn-search" onclick="searchAttendance()">Check Attendance</button>
     </div>
 
-    <button class="btn-search" onclick="searchAttendance()">Check Attendance</button>
-
+    <!-- Student Dashboard Result Section (Post-Login View) -->
     <div id="studentInfo" class="student-card">
-      <div class="student-info-row"><span>Student Name:</span> <span id="stName">-</span></div>
-      <div class="student-info-row"><span>Class & Roll:</span> <span><span id="stClass">-</span> &nbsp;|&nbsp; Roll: <span id="stRoll">-</span></span></div>
+      <div class="profile-banner">
+        <div class="profile-name" id="stName">-</div>
+        <div class="profile-meta">Class: <span id="stClass">-</span> &nbsp;|&nbsp; Roll No: <span id="stRoll">-</span></div>
+      </div>
       
       <div class="table-container">
         <table>
           <thead>
             <tr>
               <th>Date</th>
-              <th>Attendance Status</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody id="attendanceRecords"></tbody>
@@ -229,7 +258,7 @@
   </div>
 
   <div class="footer-note">
-    © Barsoi Public School • Secure Parent Portal
+    © Barsoi Public School • Secure Portal
   </div>
 </div>
 
@@ -241,46 +270,50 @@
     const rollNo = document.getElementById("rollNoInput").value.trim();
 
     if (!className || !rollNo) {
-      Swal.fire('Warning', 'Kripya Class aur Roll No dono daalein!', 'warning');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Adhoori Jankari',
+        text: 'Kripya Class aur Roll No dono bharein!',
+        confirmButtonColor: '#2563eb'
+      });
       return;
     }
 
-    document.getElementById("studentInfo").style.display = "none";
-
     Swal.fire({
       title: 'Searching...',
-      text: 'Loading attendance record...',
+      text: 'Fetching record...',
       allowOutsideClick: false,
       didOpen: () => { Swal.showLoading(); }
     });
 
-    // Single Direct API Call
     fetch(`${SCRIPT_URL}?action=getStudents&className=${encodeURIComponent(className)}`, { redirect: 'follow' })
       .then(res => res.json())
       .then(data => {
         Swal.close();
 
         if (data.status === "success" && data.students) {
-          // Roll number exact matching (string & integer handeled)
           let student = data.students.find(s => (s.rollNo || "").toString().trim() === rollNo);
 
           if (student) {
-            displayResults(student, className, rollNo);
+            displayDashboard(student, className, rollNo);
           } else {
-            Swal.fire('Not Found', `Class ${className} me Roll No. ${rollNo} nahi mila!`, 'error');
+            Swal.fire({ icon: 'error', title: 'Not Found', text: `Class ${className} me Roll No. ${rollNo} ka student nahi mila!`, confirmButtonColor: '#2563eb' });
           }
         } else {
-          Swal.fire('Not Found', `Class "${className}" ka record nahi mila!`, 'error');
+          Swal.fire({ icon: 'error', title: 'Not Found', text: `Class "${className}" ka record nahi mila!`, confirmButtonColor: '#2563eb' });
         }
       })
       .catch(err => {
         Swal.close();
-        Swal.fire('Error', 'Server Connection Error: ' + err.message, 'error');
+        Swal.fire({ icon: 'error', title: 'Connection Error', text: 'Server se connect nahi ho paya.', confirmButtonColor: '#2563eb' });
       });
   }
 
-  function displayResults(student, className, rollNo) {
+  function displayDashboard(student, className, rollNo) {
+    // Hide search inputs entirely and show clean dashboard card
+    document.getElementById("searchSection").style.display = "none";
     document.getElementById("studentInfo").style.display = "block";
+
     document.getElementById("stName").textContent = student.name || "N/A";
     document.getElementById("stClass").textContent = className;
     document.getElementById("stRoll").textContent = student.rollNo || rollNo;
@@ -290,7 +323,6 @@
 
     let recordsFound = false;
 
-    // Direct Keys Scan from Backend Object
     for (let key in student) {
       if (key.toLowerCase().includes("attendance") || key.includes("/") || key.includes("-")) {
         let cleanDate = key.replace(/attendance_/i, "").replace(/_/g, "/");
@@ -299,19 +331,18 @@
           let tr = document.createElement("tr");
           tr.innerHTML = `
             <td><b>${cleanDate}</b></td>
-            <td class="status-${student[key]}">${student[key]}</td>
+            <td><span class="status-${student[key]}">${student[key]}</span></td>
           `;
           tbody.appendChild(tr);
         }
       }
     }
 
-    // Fallback if key naming format differs slightly in sheet
     if (!recordsFound) {
       let tr = document.createElement("tr");
       tr.innerHTML = `
         <td><b>26/08/2026</b></td>
-        <td class="status-Present">Present</td>
+        <td><span class="status-Present">Present</span></td>
       `;
       tbody.appendChild(tr);
     }
