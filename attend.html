@@ -3,67 +3,288 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Teacher Attendance Portal</title>
+  <title>Teacher Attendance Portal | Barsoi Public School</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- SweetAlert2 CSS -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    * { box-sizing: border-box; font-family: Arial, sans-serif; }
-    body { background: #f4f7f6; padding: 20px; margin: 0; }
-    .container { max-width: 700px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h2 { text-align: center; color: #333; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; }
-    select, input[type="date"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-    .attendance-box { display: none; margin-top: 15px; }
-    .select-all-box { background: #e9ecef; padding: 10px; margin-bottom: 10px; border-radius: 4px; font-weight: bold; }
+    :root {
+      --primary: #0f172a;
+      --secondary: #2563eb;
+      --accent: #22c55e;
+      --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 15px;
+    }
+
+    .main-wrapper {
+      width: 100%;
+      max-width: 650px;
+      background: var(--card-bg);
+      border-radius: 20px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+
+    /* School Header */
+    .school-header {
+      background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+      color: white;
+      text-align: center;
+      padding: 28px 20px;
+      position: relative;
+    }
+
+    .school-header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .school-header p {
+      font-size: 13px;
+      opacity: 0.9;
+      font-weight: 400;
+      margin-bottom: 4px;
+    }
+
+    .udise-badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(4px);
+      padding: 4px 12px;
+      border-radius: 30px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 8px;
+      letter-spacing: 0.5px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* Content Body */
+    .content-body { padding: 24px; }
+
+    .portal-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .portal-title::before {
+      content: '';
+      width: 4px;
+      height: 16px;
+      background: var(--secondary);
+      border-radius: 2px;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .form-group { display: flex; flex-direction: column; }
+
+    label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    select, input[type="date"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border-color);
+      border-radius: 10px;
+      font-size: 14px;
+      background: #f8fafc;
+      color: var(--text-main);
+      outline: none;
+      transition: all 0.2s ease;
+      font-weight: 500;
+    }
+
+    select:focus, input[type="date"]:focus {
+      border-color: var(--secondary);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    }
+
+    /* Attendance Container */
+    .attendance-box {
+      display: none;
+      animation: fadeInUp 0.3s ease;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .select-all-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 12px 16px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      font-weight: 700;
+      color: #1e40af;
+      font-size: 14px;
+    }
+
+    .table-container {
+      max-height: 380px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      background: white;
+    }
+
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
-    th { background: #007bff; color: white; }
-    .btn-submit { width: 100%; background: #28a745; color: white; padding: 12px; border: none; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 15px; }
-    .btn-submit:hover { background: #218838; }
-    .loader { display: none; text-align: center; color: #007bff; margin: 10px 0; }
+
+    th {
+      background: #f1f5f9;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 12px 14px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      border-bottom: 1px solid var(--border-color);
+      z-index: 2;
+    }
+
+    td {
+      padding: 12px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid #f1f5f9;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    tr:hover { background-color: #f8fafc; }
+
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: white;
+      padding: 14px;
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 12px;
+      cursor: pointer;
+      margin-top: 20px;
+      box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+      transition: all 0.2s ease;
+    }
+
+    .btn-submit:hover { opacity: 0.95; transform: translateY(-1px); }
+    .btn-submit:active { transform: translateY(0); }
+
+    .footer-note {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 16px;
+      border-top: 1px solid var(--border-color);
+      background: #f8fafc;
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <h2>Mark Attendance</h2>
-
-  <div class="form-group">
-    <label>Select Date:</label>
-    <input type="date" id="attDate">
+<div class="main-wrapper">
+  <div class="school-header">
+    <h1>Barsoi Public School</h1>
+    <p>Nehar Nagar, Barsoi, Katihar</p>
+    <div class="udise-badge">UDISE - 10101119902</div>
   </div>
 
-  <div class="form-group">
-    <label>Select Class:</label>
-    <select id="classSelect" onchange="loadStudents()">
-      <option value="">-- Choose Class --</option>
-    </select>
-  </div>
+  <div class="content-body">
+    <div class="portal-title">Teacher Attendance Dashboard</div>
 
-  <div id="loader" class="loader">Processing...</div>
-
-  <div id="attendanceBox" class="attendance-box">
-    <div class="select-all-box">
-      <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
-      <label for="selectAll" style="display:inline; cursor:pointer;">Select All (Present)</label>
+    <div class="controls-grid">
+      <div class="form-group">
+        <label>Attendance Date</label>
+        <input type="date" id="attDate">
+      </div>
+      <div class="form-group">
+        <label>Select Class</label>
+        <select id="classSelect" onchange="loadStudents()">
+          <option value="">-- Choose Class --</option>
+        </select>
+      </div>
     </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Roll</th>
-          <th>Name</th>
-          <th>Present</th>
-        </tr>
-      </thead>
-      <tbody id="studentList"></tbody>
-    </table>
+    <div id="attendanceBox" class="attendance-box">
+      <div class="select-all-box">
+        <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+        <label for="selectAll" style="cursor:pointer; margin:0; color: inherit; font-weight:700;">Select All Students (Present)</label>
+      </div>
 
-    <button class="btn-submit" onclick="submitAttendance()">Save Attendance</button>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 20%;">Roll No</th>
+              <th style="width: 65%;">Student Name</th>
+              <th style="width: 15%; text-align: center;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="studentList"></tbody>
+        </table>
+      </div>
+
+      <button class="btn-submit" onclick="submitAttendance()">Save & Upload Attendance</button>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    © Barsoi Public School • Secure Automated System
   </div>
 </div>
 
 <script>
-  // Dynamic Deployment Web App URL Yahan Set Karein
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwL1Q31ReVc8Z3fEQKGitprBdmlfaksrOL3Pk8AshQX6CPA-tlrlUdlWTsOysQny3n6/exec"; 
 
   window.onload = function() {
@@ -72,11 +293,17 @@
   };
 
   function fetchClasses() {
-    showLoader(true);
+    Swal.fire({
+      title: 'Loading Classes...',
+      text: 'Please wait while we connect to database',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
     fetch(`${SCRIPT_URL}?action=getClasses`)
       .then(res => res.json())
       .then(data => {
-        showLoader(false);
+        Swal.close();
         if (data.status === "success") {
           const select = document.getElementById("classSelect");
           data.classes.forEach(cls => {
@@ -85,7 +312,11 @@
             option.textContent = cls;
             select.appendChild(option);
           });
+        } else {
+          Swal.fire('Error', data.message, 'error');
         }
+      }).catch(err => {
+        Swal.fire('Connection Error', 'Failed to fetch classes.', 'error');
       });
   }
 
@@ -97,23 +328,38 @@
 
     if (!className) { box.style.display = "none"; return; }
 
-    showLoader(true);
+    Swal.fire({
+      title: 'Fetching Students...',
+      text: `Loading students for class ${className}`,
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
     fetch(`${SCRIPT_URL}?action=getStudents&className=${encodeURIComponent(className)}`)
       .then(res => res.json())
       .then(data => {
-        showLoader(false);
+        Swal.close();
         if (data.status === "success") {
           box.style.display = "block";
+          if(data.students.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding: 20px;'>No students found in this class.</td></tr>";
+            return;
+          }
           data.students.forEach(st => {
             let tr = document.createElement("tr");
             tr.innerHTML = `
-              <td>${st.rollNo}</td>
+              <td><b>${st.rollNo || '-'}</b></td>
               <td>${st.name}</td>
-              <td><input type="checkbox" class="student-check" data-row="${st.rowIndex}"></td>
+              <td style="text-align: center;"><input type="checkbox" class="student-check" data-row="${st.rowIndex}"></td>
             `;
             tbody.appendChild(tr);
           });
+        } else {
+          Swal.fire('Error', data.message, 'error');
         }
+      }).catch(err => {
+        Swal.close();
+        Swal.fire('Error', 'Failed to load student list.', 'error');
       });
   }
 
@@ -125,7 +371,10 @@
     const className = document.getElementById("classSelect").value;
     const rawDate = document.getElementById("attDate").value;
     
-    if(!rawDate) { alert("Please select date"); return; }
+    if(!rawDate) { 
+      Swal.fire('Warning', 'Please select an attendance date!', 'warning'); 
+      return; 
+    }
     
     const dateParts = rawDate.split("-");
     const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
@@ -140,7 +389,13 @@
       });
     });
 
-    showLoader(true);
+    Swal.fire({
+      title: 'Saving Attendance...',
+      text: 'Please wait while data is updated in Google Sheet',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
     fetch(SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -153,13 +408,20 @@
     })
     .then(res => res.json())
     .then(res => {
-      showLoader(false);
-      alert(res.message);
+      if(res.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Success!',
+          text: res.message,
+          confirmButtonColor: '#16a34a'
+        });
+      } else {
+        Swal.fire('Error', res.message, 'error');
+      }
+    })
+    .catch(err => {
+      Swal.fire('Error', 'Failed to save attendance: ' + err, 'error');
     });
-  }
-
-  function showLoader(show) {
-    document.getElementById("loader").style.display = show ? "block" : "none";
   }
 </script>
 
