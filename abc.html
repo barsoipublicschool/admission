@@ -54,12 +54,14 @@
         <div class="uploads">
             <div class="field">
                 <label>Student Photo</label>
-                <input type="file" id="photoFile" accept="image/*" capture="environment" onchange="upImg(this, 'p-pre')">
+                <!-- capture attribute ko hata diya gaya hai taaki Gallery/Files ka Option aaye -->
+                <input type="file" id="photoFile" accept="image/*" onchange="upImg(this, 'p-pre')">
                 <div id="p-pre" class="pre-box" style="margin-top:8px;">PHOTO</div>
             </div>
             <div class="field">
                 <label>Signature</label>
-                <input type="file" id="sigFile" accept="image/*" capture="environment" onchange="upImg(this, 's-pre')">
+                <!-- capture attribute ko hata diya gaya hai taaki Gallery/Files ka Option aaye -->
+                <input type="file" id="sigFile" accept="image/*" onchange="upImg(this, 's-pre')">
                 <div id="s-pre" class="pre-box" style="width:180px;height:50px;margin-top:8px;">SIGNATURE</div>
             </div>
         </div>
