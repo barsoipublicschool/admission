@@ -7,13 +7,14 @@
   <style>
     body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; padding: 15px; margin: 0; }
     .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    #canvas-container { position: relative; margin-top: 15px; width: 100%; display: flex; justify-content: center; }
+    #canvas-container { position: relative; margin-top: 15px; width: 100%; display: flex; flex-direction: column; align-items: center; }
     canvas { max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 5px; }
     button, input { margin: 10px 0; padding: 12px 18px; font-size: 16px; border-radius: 5px; cursor: pointer; border: 1px solid #007bff; }
-    button { background-color: #007bff; color: white; font-weight: bold; }
+    button { background-color: #007bff; color: white; font-weight: bold; width: 100%; max-width: 300px; }
     button:disabled { background-color: #cccccc; border-color: #cccccc; }
-    #status { font-weight: bold; color: #0056b3; margin: 10px 0; }
-    #score { color: #28a745; font-size: 24px; margin: 10px 0; }
+    #status { font-weight: bold; color: #0056b3; margin: 12px 0; font-size: 16px; }
+    #score { color: #28a745; font-size: 24px; margin: 10px 0; font-weight: bold; }
+    #errorBox { color: red; background: #ffe6e6; padding: 10px; border-radius: 5px; display: none; margin: 10px 0; font-size: 13px; text-align: left; word-break: break-all; }
   </style>
 </head>
 <body>
@@ -26,6 +27,7 @@
   <button id="checkBtn" onclick="processImage()">Check Copy 📝</button>
 
   <div id="status"></div>
+  <div id="errorBox"></div>
   <h3 id="score"></h3>
 
   <div id="canvas-container">
@@ -34,7 +36,7 @@
 </div>
 
 <script>
-  // Apni Google Apps Script Web App Deployment URL yahan dhyan se paste karein
+  // Aapka Web App URL set kar diya gaya hai
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBSRg-rAth3-Xb6XtSBNT8eleuKExWEuUMmgPGCbkmZGCoZNxK-kL-Zis2QPLcTlgn/exec";
 
   async function processImage() {
@@ -42,6 +44,7 @@
     const status = document.getElementById('status');
     const scoreText = document.getElementById('score');
     const checkBtn = document.getElementById('checkBtn');
+    const errorBox = document.getElementById('errorBox');
     
     if (!input.files[0]) {
       alert("Kripya pehle camera se pic lein ya image upload karein!");
@@ -51,6 +54,8 @@
     checkBtn.disabled = true;
     status.innerText = "Scanning & Checking paper like a teacher...";
     scoreText.innerText = "";
+    errorBox.style.display = "none";
+    errorBox.innerText = "";
 
     const file = input.files[0];
     const reader = new FileReader();
@@ -65,15 +70,15 @@
         const canvas = document.getElementById('outputCanvas');
         const ctx = canvas.getContext('2d');
         
-        // Canvas Image Scale
+        // Canvas Setup
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
 
         try {
+          // Google Apps Script Redirect Handling ke liye Text Format post
           const response = await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
-            mode: 'cors',
             headers: {
               'Content-Type': 'text/plain;charset=utf-8',
             },
@@ -85,25 +90,29 @@
 
           try {
             result = JSON.parse(rawText);
-          } catch(err) {
-            console.error("Raw response:", rawText);
-            status.innerText = "Error: Invalid response from Apps Script.";
+          } catch(jsonErr) {
+            status.innerText = "Script Error! Direct response check karein.";
+            errorBox.style.display = "block";
+            errorBox.innerText = "Raw Response: " + rawText;
             checkBtn.disabled = false;
             return;
           }
 
           if(result.error) {
-            status.innerText = "Script Error: " + (typeof result.error === 'object' ? JSON.stringify(result.error) : result.error);
+            status.innerText = "API / Backend Error!";
+            errorBox.style.display = "block";
+            errorBox.innerText = typeof result.error === 'object' ? JSON.stringify(result.error) : result.error;
             checkBtn.disabled = false;
             return;
           }
 
           status.innerText = "Checking Completed! ✅";
-          scoreText.innerText = "Total Score: " + (result.total_marks || "Checked");
+          scoreText.innerText = "Total Score: " + (result.total_marks || "Evaluated");
 
-          // Draw Marks and Rectangles
-          if (result.marks && Array.isArray(result.marks)) {
-            result.marks.forEach(item => {
+          // Draw Teacher Marking Overlay
+          const markList = result.marks || result.annotations || [];
+          if (Array.isArray(markList)) {
+            markList.forEach(item => {
               if(!item.box_2d) return;
 
               const [ymin, xmin, ymax, xmax] = item.box_2d;
@@ -117,20 +126,21 @@
               ctx.strokeStyle = isCorrect ? '#28a745' : '#dc3545';
               ctx.lineWidth = Math.max(5, img.width / 120);
 
-              // Draw Box / Red Circle
+              // Red Box / Green Box
               ctx.strokeRect(x, y, w, h);
 
-              // Draw Text / Feedback Mark
+              // Draw Pen Marks Text
               ctx.fillStyle = ctx.strokeStyle;
-              const fontSize = Math.max(20, img.width / 25);
+              const fontSize = Math.max(22, img.width / 25);
               ctx.font = `bold ${fontSize}px Arial`;
-              ctx.fillText(item.text || (isCorrect ? "✔" : "✖"), x + w + 10, y + (h / 2) + (fontSize/3));
+              ctx.fillText(item.text || item.label || (isCorrect ? "✔" : "✖"), x + Math.max(w + 10, 15), y + (h > 0 ? h / 2 : 20));
             });
           }
 
         } catch (err) {
-          status.innerText = "Network Error! Request block ho rahi hai.";
-          console.error(err);
+          status.innerText = "Network Request Failed!";
+          errorBox.style.display = "block";
+          errorBox.innerText = err.toString();
         } finally {
           checkBtn.disabled = false;
         }
