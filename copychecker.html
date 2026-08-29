@@ -7,21 +7,23 @@
   <style>
     body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; padding: 15px; margin: 0; }
     .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    #canvas-container { position: relative; margin-top: 15px; display: inline-block; width: 100%; }
-    canvas { width: 100%; height: auto; border: 1px solid #ccc; border-radius: 5px; }
-    button, input { margin: 10px 0; padding: 10px 15px; font-size: 16px; border-radius: 5px; cursor: pointer; }
+    #canvas-container { position: relative; margin-top: 15px; width: 100%; display: flex; justify-content: center; }
+    canvas { max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 5px; }
+    button, input { margin: 10px 0; padding: 12px 18px; font-size: 16px; border-radius: 5px; cursor: pointer; border: 1px solid #007bff; }
+    button { background-color: #007bff; color: white; font-weight: bold; }
+    button:disabled { background-color: #cccccc; border-color: #cccccc; }
     #status { font-weight: bold; color: #0056b3; margin: 10px 0; }
-    #score { color: #28a745; font-size: 22px; }
+    #score { color: #28a745; font-size: 24px; margin: 10px 0; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>AI Copy Checker (Teacher Mode)</h2>
+  <h2>AI Copy Checker 📝</h2>
   
   <input type="file" id="imageInput" accept="image/*" capture="environment">
   <br>
-  <button onclick="processImage()">Check Copy 📝</button>
+  <button id="checkBtn" onclick="processImage()">Check Copy 📝</button>
 
   <div id="status"></div>
   <h3 id="score"></h3>
@@ -32,19 +34,21 @@
 </div>
 
 <script>
-  // Apni Google Apps Script Web App Deployment URL yahan dalein
+  // Apni Google Apps Script Web App Deployment URL yahan dhyan se paste karein
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBSRg-rAth3-Xb6XtSBNT8eleuKExWEuUMmgPGCbkmZGCoZNxK-kL-Zis2QPLcTlgn/exec";
 
   async function processImage() {
     const input = document.getElementById('imageInput');
     const status = document.getElementById('status');
     const scoreText = document.getElementById('score');
+    const checkBtn = document.getElementById('checkBtn');
     
     if (!input.files[0]) {
-      alert("Please capture or select an image first!");
+      alert("Kripya pehle camera se pic lein ya image upload karein!");
       return;
     }
 
+    checkBtn.disabled = true;
     status.innerText = "Scanning & Checking paper like a teacher...";
     scoreText.innerText = "";
 
@@ -56,9 +60,12 @@
       
       const img = new Image();
       img.src = e.target.result;
+      
       img.onload = async () => {
         const canvas = document.getElementById('outputCanvas');
         const ctx = canvas.getContext('2d');
+        
+        // Canvas Image Scale
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
@@ -66,21 +73,39 @@
         try {
           const response = await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8',
+            },
             body: JSON.stringify({ image: base64Data })
           });
 
-          const result = await response.json();
+          const rawText = await response.text();
+          let result;
 
-          if(result.error) {
-            status.innerText = "Error: " + result.error;
+          try {
+            result = JSON.parse(rawText);
+          } catch(err) {
+            console.error("Raw response:", rawText);
+            status.innerText = "Error: Invalid response from Apps Script.";
+            checkBtn.disabled = false;
             return;
           }
 
-          status.innerText = "Checking Done!";
-          scoreText.innerText = "Total Score: " + (result.total_marks || "Evaluated");
+          if(result.error) {
+            status.innerText = "Script Error: " + (typeof result.error === 'object' ? JSON.stringify(result.error) : result.error);
+            checkBtn.disabled = false;
+            return;
+          }
 
+          status.innerText = "Checking Completed! ✅";
+          scoreText.innerText = "Total Score: " + (result.total_marks || "Checked");
+
+          // Draw Marks and Rectangles
           if (result.marks && Array.isArray(result.marks)) {
             result.marks.forEach(item => {
+              if(!item.box_2d) return;
+
               const [ymin, xmin, ymax, xmax] = item.box_2d;
               
               const x = (xmin / 1000) * img.width;
@@ -88,20 +113,26 @@
               const w = ((xmax - xmin) / 1000) * img.width;
               const h = ((ymax - ymin) / 1000) * img.height;
 
-              ctx.strokeStyle = item.type === 'correct' ? 'green' : 'red';
-              ctx.lineWidth = Math.max(4, img.width / 150);
+              const isCorrect = item.type === 'correct';
+              ctx.strokeStyle = isCorrect ? '#28a745' : '#dc3545';
+              ctx.lineWidth = Math.max(5, img.width / 120);
 
+              // Draw Box / Red Circle
               ctx.strokeRect(x, y, w, h);
 
+              // Draw Text / Feedback Mark
               ctx.fillStyle = ctx.strokeStyle;
-              ctx.font = `bold ${Math.max(18, img.width / 30)}px Arial`;
-              ctx.fillText(item.text, x + w + 10, y + (h / 2));
+              const fontSize = Math.max(20, img.width / 25);
+              ctx.font = `bold ${fontSize}px Arial`;
+              ctx.fillText(item.text || (isCorrect ? "✔" : "✖"), x + w + 10, y + (h / 2) + (fontSize/3));
             });
           }
 
         } catch (err) {
-          status.innerText = "Failed to process image. Check console for details.";
+          status.innerText = "Network Error! Request block ho rahi hai.";
           console.error(err);
+        } finally {
+          checkBtn.disabled = false;
         }
       };
     };
