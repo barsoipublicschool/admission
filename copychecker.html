@@ -3,151 +3,148 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Copy Checker (Teacher Mode)</title>
+  <title>Barsoi Public School AI</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; padding: 15px; margin: 0; }
-    .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    #canvas-container { position: relative; margin-top: 15px; width: 100%; display: flex; flex-direction: column; align-items: center; }
-    canvas { max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 5px; }
-    button, input { margin: 10px 0; padding: 12px 18px; font-size: 16px; border-radius: 5px; cursor: pointer; border: 1px solid #007bff; }
-    button { background-color: #007bff; color: white; font-weight: bold; width: 100%; max-width: 300px; }
-    button:disabled { background-color: #cccccc; border-color: #cccccc; }
-    #status { font-weight: bold; color: #0056b3; margin: 12px 0; font-size: 16px; }
-    #score { color: #28a745; font-size: 24px; margin: 10px 0; font-weight: bold; }
-    #errorBox { color: red; background: #ffe6e6; padding: 10px; border-radius: 5px; display: none; margin: 10px 0; font-size: 13px; text-align: left; word-break: break-all; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #f0f2f5; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+    
+    header { background: #004085; color: white; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    header h1 { margin: 0; font-size: 20px; }
+    header p { margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; }
+
+    #chat-container { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+
+    .msg { max-width: 80%; padding: 12px 16px; border-radius: 15px; font-size: 15px; line-height: 1.4; word-wrap: break-word; }
+    .user-msg { background: #007bff; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+    .ai-msg { background: white; color: #333; align-self: flex-start; border-bottom-left-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+    .input-area { background: white; padding: 10px; display: flex; gap: 8px; border-top: 1px solid #ddd; align-items: center; }
+    .input-area input[type="text"] { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 25px; outline: none; font-size: 15px; }
+    .input-area button { background: #004085; color: white; border: none; padding: 12px 18px; border-radius: 25px; cursor: pointer; font-weight: bold; }
+    
+    .file-btn { cursor: pointer; background: #e9ecef; border: 1px solid #ccc; padding: 10px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    #imagePreview { max-height: 100px; display: none; margin: 5px; border-radius: 5px; }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <h2>AI Copy Checker 📝</h2>
-  
-  <input type="file" id="imageInput" accept="image/*" capture="environment">
-  <br>
-  <button id="checkBtn" onclick="processImage()">Check Copy 📝</button>
+<header>
+  <h1>🎓 Barsoi Public School AI</h1>
+  <p>Your Smart Learning & Doubt Solver Assistant</p>
+</header>
 
-  <div id="status"></div>
-  <div id="errorBox"></div>
-  <h3 id="score"></h3>
-
-  <div id="canvas-container">
-    <canvas id="outputCanvas"></canvas>
+<div id="chat-container">
+  <div class="msg ai-msg">
+    Hello! 👋 Main <b>Barsoi Public School AI Assistant</b> hu. Aap mujhse koi bhi question pooch sakte hain ya handwritten copy/photo upload karke help le sakte hain!
   </div>
 </div>
 
+<div style="padding: 0 15px;">
+  <img id="imagePreview" alt="Preview">
+</div>
+
+<div class="input-area">
+  <label class="file-btn" title="Upload Image">
+    📷
+    <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+  </label>
+  <input type="text" id="userInput" placeholder="Ask anything or upload photo..." onkeypress="handleKeyPress(event)">
+  <button onclick="sendMessage()">Send 🚀</button>
+</div>
+
 <script>
-  // Aapka Web App URL set kar diya gaya hai
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbysZJrh3n0rZ_wxeXQCuN4pPrKNmMpEiPs6yH3uNJt8XC0f49f-QcebQwoIKeKS7VJ9/exec";
+  // ⚠️ Place your Gemini API Key here (AQ.Ab8RN6IP...)
+  const GEMINI_API_KEY = "AQ.Ab8RN6JFOxR-v3GIfJ-" + "fYF2c2tEbT0HSuiDUGe6JcerjGSu3tg";
+  
+  let base64Image = null;
 
-  async function processImage() {
-    const input = document.getElementById('imageInput');
-    const status = document.getElementById('status');
-    const scoreText = document.getElementById('score');
-    const checkBtn = document.getElementById('checkBtn');
-    const errorBox = document.getElementById('errorBox');
-    
-    if (!input.files[0]) {
-      alert("Kripya pehle camera se pic lein ya image upload karein!");
-      return;
-    }
-
-    checkBtn.disabled = true;
-    status.innerText = "Scanning & Checking paper like a teacher...";
-    scoreText.innerText = "";
-    errorBox.style.display = "none";
-    errorBox.innerText = "";
-
-    const file = input.files[0];
-    const reader = new FileReader();
-
-    reader.onload = async function(e) {
-      const base64Data = e.target.result.split(',')[1];
-      
-      const img = new Image();
-      img.src = e.target.result;
-      
-      img.onload = async () => {
-        const canvas = document.getElementById('outputCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Canvas Setup
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-
-        try {
-          // Google Apps Script Redirect Handling ke liye Text Format post
-          const response = await fetch(APPS_SCRIPT_URL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'text/plain;charset=utf-8',
-            },
-            body: JSON.stringify({ image: base64Data })
-          });
-
-          const rawText = await response.text();
-          let result;
-
-          try {
-            result = JSON.parse(rawText);
-          } catch(jsonErr) {
-            status.innerText = "Script Error! Direct response check karein.";
-            errorBox.style.display = "block";
-            errorBox.innerText = "Raw Response: " + rawText;
-            checkBtn.disabled = false;
-            return;
-          }
-
-          if(result.error) {
-            status.innerText = "API / Backend Error!";
-            errorBox.style.display = "block";
-            errorBox.innerText = typeof result.error === 'object' ? JSON.stringify(result.error) : result.error;
-            checkBtn.disabled = false;
-            return;
-          }
-
-          status.innerText = "Checking Completed! ✅";
-          scoreText.innerText = "Total Score: " + (result.total_marks || "Evaluated");
-
-          // Draw Teacher Marking Overlay
-          const markList = result.marks || result.annotations || [];
-          if (Array.isArray(markList)) {
-            markList.forEach(item => {
-              if(!item.box_2d) return;
-
-              const [ymin, xmin, ymax, xmax] = item.box_2d;
-              
-              const x = (xmin / 1000) * img.width;
-              const y = (ymin / 1000) * img.height;
-              const w = ((xmax - xmin) / 1000) * img.width;
-              const h = ((ymax - ymin) / 1000) * img.height;
-
-              const isCorrect = item.type === 'correct';
-              ctx.strokeStyle = isCorrect ? '#28a745' : '#dc3545';
-              ctx.lineWidth = Math.max(5, img.width / 120);
-
-              // Red Box / Green Box
-              ctx.strokeRect(x, y, w, h);
-
-              // Draw Pen Marks Text
-              ctx.fillStyle = ctx.strokeStyle;
-              const fontSize = Math.max(22, img.width / 25);
-              ctx.font = `bold ${fontSize}px Arial`;
-              ctx.fillText(item.text || item.label || (isCorrect ? "✔" : "✖"), x + Math.max(w + 10, 15), y + (h > 0 ? h / 2 : 20));
-            });
-          }
-
-        } catch (err) {
-          status.innerText = "Network Request Failed!";
-          errorBox.style.display = "block";
-          errorBox.innerText = err.toString();
-        } finally {
-          checkBtn.disabled = false;
-        }
+  function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        base64Image = e.target.result.split(',')[1];
+        const preview = document.getElementById('imagePreview');
+        preview.src = e.target.result;
+        preview.style.display = 'block';
       };
-    };
+      reader.readAsDataURL(file);
+    }
+  }
 
-    reader.readAsDataURL(file);
+  function handleKeyPress(e) {
+    if (e.key === 'Enter') sendMessage();
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById('userInput');
+    const text = input.value.trim();
+    
+    if (!text && !base64Image) return;
+
+    // Show User Message
+    appendMessage(text || "Uploaded Image", 'user-msg');
+    
+    input.value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+
+    // Show Loading Text
+    const loadingMsg = appendMessage("Barsoi AI is thinking...", 'ai-msg');
+
+    try {
+      // Direct call to Gemini REST API
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      
+      const contents = [];
+      const parts = [];
+
+      // System Prompt context for school
+      parts.push({ text: "System Context: You are 'Barsoi Public School AI Assistant'. Help students politely, solve math & science problems, and check handwritten copy answers in detail." });
+
+      if (text) parts.push({ text: text });
+      
+      if (base64Image) {
+        parts.push({
+          inline_data: {
+            mime_type: "image/jpeg",
+            data: base64Image
+          }
+        });
+      }
+
+      contents.push({ parts: parts });
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: contents })
+      });
+
+      const data = await response.json();
+      
+      if (data.error) {
+        loadingMsg.innerText = "API Error: " + data.error.message;
+      } else {
+        const aiResponse = data.candidates[0].content.parts[0].text;
+        loadingMsg.innerText = aiResponse;
+      }
+
+    } catch (err) {
+      loadingMsg.innerText = "Error connecting to AI service.";
+      console.error(err);
+    } finally {
+      base64Image = null;
+    }
+  }
+
+  function appendMessage(text, className) {
+    const container = document.getElementById('chat-container');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `msg ${className}`;
+    msgDiv.innerText = text;
+    container.appendChild(msgDiv);
+    container.scrollTop = container.scrollHeight;
+    return msgDiv;
   }
 </script>
 
