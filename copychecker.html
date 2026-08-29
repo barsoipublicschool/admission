@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Teacher Copy Checker</title>
+  <title>AI Copy Checker (Teacher Mode)</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; padding: 20px; }
+    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; padding: 15px; margin: 0; }
     .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    #canvas-container { position: relative; margin-top: 15px; display: inline-block; }
-    canvas { max-width: 100%; height: auto; border: 1px solid #ccc; }
+    #canvas-container { position: relative; margin-top: 15px; display: inline-block; width: 100%; }
+    canvas { width: 100%; height: auto; border: 1px solid #ccc; border-radius: 5px; }
     button, input { margin: 10px 0; padding: 10px 15px; font-size: 16px; border-radius: 5px; cursor: pointer; }
-    #status { font-weight: bold; color: #333; margin: 10px 0; }
+    #status { font-weight: bold; color: #0056b3; margin: 10px 0; }
+    #score { color: #28a745; font-size: 22px; }
   </style>
 </head>
 <body>
@@ -18,7 +19,6 @@
 <div class="container">
   <h2>AI Copy Checker (Teacher Mode)</h2>
   
-  <!-- Single Input for both Camera & Gallery -->
   <input type="file" id="imageInput" accept="image/*" capture="environment">
   <br>
   <button onclick="processImage()">Check Copy 📝</button>
@@ -32,8 +32,8 @@
 </div>
 
 <script>
-  // Replace with your Google Apps Script Web App URL
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbysgNq9lq4BrGR55m1OmKR4WAjSQphiHuXWx29vDBmQeAXpRpuQn8zhTqz9x1AKEVB8/exec";
+  // Apni Google Apps Script Web App Deployment URL yahan dalein
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBSRg-rAth3-Xb6XtSBNT8eleuKExWEuUMmgPGCbkmZGCoZNxK-kL-Zis2QPLcTlgn/exec";
 
   async function processImage() {
     const input = document.getElementById('imageInput');
@@ -54,7 +54,6 @@
     reader.onload = async function(e) {
       const base64Data = e.target.result.split(',')[1];
       
-      // Load Image to Canvas first
       const img = new Image();
       img.src = e.target.result;
       img.onload = async () => {
@@ -65,7 +64,6 @@
         ctx.drawImage(img, 0, 0);
 
         try {
-          // Send to Google Apps Script
           const response = await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify({ image: base64Data })
@@ -74,38 +72,35 @@
           const result = await response.json();
 
           if(result.error) {
-            status.innerText = "Error checking paper!";
-            console.error(result.error);
+            status.innerText = "Error: " + result.error;
             return;
           }
 
           status.innerText = "Checking Done!";
-          scoreText.innerText = "Total Score: " + result.total_marks;
+          scoreText.innerText = "Total Score: " + (result.total_marks || "Evaluated");
 
-          // Draw Teacher Ink Marks (Red Colors)
-          result.marks.forEach(item => {
-            const [ymin, xmin, ymax, xmax] = item.box_2d;
-            
-            // Scaled Coordinates
-            const x = (xmin / 1000) * img.width;
-            const y = (ymin / 1000) * img.height;
-            const w = ((xmax - xmin) / 1000) * img.width;
-            const h = ((ymax - ymin) / 1000) * img.height;
+          if (result.marks && Array.isArray(result.marks)) {
+            result.marks.forEach(item => {
+              const [ymin, xmin, ymax, xmax] = item.box_2d;
+              
+              const x = (xmin / 1000) * img.width;
+              const y = (ymin / 1000) * img.height;
+              const w = ((xmax - xmin) / 1000) * img.width;
+              const h = ((ymax - ymin) / 1000) * img.height;
 
-            ctx.strokeStyle = item.type === 'correct' ? 'green' : 'red';
-            ctx.lineWidth = Math.max(3, img.width / 200);
+              ctx.strokeStyle = item.type === 'correct' ? 'green' : 'red';
+              ctx.lineWidth = Math.max(4, img.width / 150);
 
-            // Draw Box/Underline
-            ctx.strokeRect(x, y, w, h);
+              ctx.strokeRect(x, y, w, h);
 
-            // Draw Red Text / Feedback
-            ctx.fillStyle = ctx.strokeStyle;
-            ctx.font = `bold ${Math.max(16, img.width / 35)}px Arial`;
-            ctx.fillText(item.text, x + w + 5, y + (h / 2));
-          });
+              ctx.fillStyle = ctx.strokeStyle;
+              ctx.font = `bold ${Math.max(18, img.width / 30)}px Arial`;
+              ctx.fillText(item.text, x + w + 10, y + (h / 2));
+            });
+          }
 
         } catch (err) {
-          status.innerText = "Failed to connect to AI backend.";
+          status.innerText = "Failed to process image. Check console for details.";
           console.error(err);
         }
       };
