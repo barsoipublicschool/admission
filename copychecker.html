@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Teacher Copy Checker</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; padding: 20px; }
+    .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    #canvas-container { position: relative; margin-top: 15px; display: inline-block; }
+    canvas { max-width: 100%; height: auto; border: 1px solid #ccc; }
+    button, input { margin: 10px 0; padding: 10px 15px; font-size: 16px; border-radius: 5px; cursor: pointer; }
+    #status { font-weight: bold; color: #333; margin: 10px 0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>AI Copy Checker (Teacher Mode)</h2>
+  
+  <!-- Single Input for both Camera & Gallery -->
+  <input type="file" id="imageInput" accept="image/*" capture="environment">
+  <br>
+  <button onclick="processImage()">Check Copy 📝</button>
+
+  <div id="status"></div>
+  <h3 id="score"></h3>
+
+  <div id="canvas-container">
+    <canvas id="outputCanvas"></canvas>
+  </div>
+</div>
+
+<script>
+  // Replace with your Google Apps Script Web App URL
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbysgNq9lq4BrGR55m1OmKR4WAjSQphiHuXWx29vDBmQeAXpRpuQn8zhTqz9x1AKEVB8/exec";
+
+  async function processImage() {
+    const input = document.getElementById('imageInput');
+    const status = document.getElementById('status');
+    const scoreText = document.getElementById('score');
+    
+    if (!input.files[0]) {
+      alert("Please capture or select an image first!");
+      return;
+    }
+
+    status.innerText = "Scanning & Checking paper like a teacher...";
+    scoreText.innerText = "";
+
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    reader.onload = async function(e) {
+      const base64Data = e.target.result.split(',')[1];
+      
+      // Load Image to Canvas first
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = async () => {
+        const canvas = document.getElementById('outputCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        try {
+          // Send to Google Apps Script
+          const response = await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ image: base64Data })
+          });
+
+          const result = await response.json();
+
+          if(result.error) {
+            status.innerText = "Error checking paper!";
+            console.error(result.error);
+            return;
+          }
+
+          status.innerText = "Checking Done!";
+          scoreText.innerText = "Total Score: " + result.total_marks;
+
+          // Draw Teacher Ink Marks (Red Colors)
+          result.marks.forEach(item => {
+            const [ymin, xmin, ymax, xmax] = item.box_2d;
+            
+            // Scaled Coordinates
+            const x = (xmin / 1000) * img.width;
+            const y = (ymin / 1000) * img.height;
+            const w = ((xmax - xmin) / 1000) * img.width;
+            const h = ((ymax - ymin) / 1000) * img.height;
+
+            ctx.strokeStyle = item.type === 'correct' ? 'green' : 'red';
+            ctx.lineWidth = Math.max(3, img.width / 200);
+
+            // Draw Box/Underline
+            ctx.strokeRect(x, y, w, h);
+
+            // Draw Red Text / Feedback
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.font = `bold ${Math.max(16, img.width / 35)}px Arial`;
+            ctx.fillText(item.text, x + w + 5, y + (h / 2));
+          });
+
+        } catch (err) {
+          status.innerText = "Failed to connect to AI backend.";
+          console.error(err);
+        }
+      };
+    };
+
+    reader.readAsDataURL(file);
+  }
+</script>
+
+</body>
+</html>
