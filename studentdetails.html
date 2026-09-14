@@ -117,6 +117,20 @@
   let selectedStudent = null;
   let capturedBase64 = "";
 
+  // Helper Function: Sheet me chahe "Reg No", "Reg No/ Student ID" ya kuch bhi likha ho, ye automatically dhundh lega
+  function getRegValue(obj) {
+    if (!obj) return "";
+    for (let key in obj) {
+      const cleanKey = key.trim().toLowerCase();
+      if (cleanKey.includes("reg") || cleanKey.includes("student id") || cleanKey.includes("id")) {
+        if (obj[key] !== undefined && obj[key] !== null && obj[key] !== "") {
+          return obj[key];
+        }
+      }
+    }
+    return obj.regNo || obj["Reg No"] || obj["Reg No/ Student ID"] || "";
+  }
+
   async function loadStudents() {
     const className = document.getElementById('classSelect').value;
     if (!className) return;
@@ -157,8 +171,9 @@
     select.innerHTML = '<option value="">-- Select Student --</option>';
     
     studentsData.forEach((st, idx) => {
-      const regVal = st["Reg No/ Student ID"] || st.regNo || st.studentId || 'No ID';
-      select.innerHTML += `<option value="${idx}">${st.name || st.studentName} (${regVal})</option>`;
+      const regId = getRegValue(st) || 'No ID';
+      const studentName = st.name || st.studentName || st["Student Name"] || st["NAME"] || "Unknown";
+      select.innerHTML += `<option value="${idx}">${studentName} (${regId})</option>`;
     });
 
     document.getElementById('studentGroup').style.display = 'block';
@@ -174,18 +189,19 @@
 
     selectedStudent = studentsData[index];
 
-    document.getElementById('lblReg').innerText = selectedStudent["Reg No/ Student ID"] || selectedStudent.regNo || selectedStudent.studentId || '-';
-    document.getElementById('lblName').innerText = selectedStudent.name || selectedStudent.studentName || '-';
-    document.getElementById('lblFather').innerText = selectedStudent.fatherName || '-';
-    document.getElementById('lblDob').innerText = selectedStudent.dob || '-';
-    document.getElementById('lblAddress').innerText = selectedStudent.address || '-';
-    document.getElementById('lblContact').innerText = selectedStudent.contact || '-';
+    const regId = getRegValue(selectedStudent);
+    document.getElementById('lblReg').innerText = regId || '-';
+    document.getElementById('lblName').innerText = selectedStudent.name || selectedStudent.studentName || selectedStudent["Student Name"] || '-';
+    document.getElementById('lblFather').innerText = selectedStudent.fatherName || selectedStudent["Father Name"] || '-';
+    document.getElementById('lblDob').innerText = selectedStudent.dob || selectedStudent["DOB"] || '-';
+    document.getElementById('lblAddress').innerText = selectedStudent.address || selectedStudent["Address"] || '-';
+    document.getElementById('lblContact').innerText = selectedStudent.contact || selectedStudent["Contact"] || selectedStudent["Mobile"] || '-';
 
-    document.getElementById('rollNo').value = selectedStudent.rollNo || '';
-    document.getElementById('motherName').value = selectedStudent.motherName || '';
+    document.getElementById('rollNo').value = selectedStudent.rollNo || selectedStudent["Roll No"] || '';
+    document.getElementById('motherName').value = selectedStudent.motherName || selectedStudent["Mother's Name"] || selectedStudent["Mother Name"] || '';
 
-    if (selectedStudent.photoUrl) {
-      document.getElementById('photoPreview').src = selectedStudent.photoUrl;
+    if (selectedStudent.photoUrl || selectedStudent["Photo"]) {
+      document.getElementById('photoPreview').src = selectedStudent.photoUrl || selectedStudent["Photo"];
     } else {
       document.getElementById('photoPreview').src = "https://via.placeholder.com/120?text=No+Photo";
     }
@@ -254,14 +270,16 @@
 
     if (!selectedStudent) return;
 
-    const regValue = selectedStudent["Reg No/ Student ID"] || selectedStudent.regNo || "";
+    const regValue = getRegValue(selectedStudent);
 
+    // Dynamic Payload: `Code.gs` ke dono tarike ke payload formats ko accept karne ke liye
     const payload = {
       className: document.getElementById('classSelect').value,
       rowIndex: selectedStudent.rowIndex,
-      "Reg No/ Student ID": regValue,
       regNo: regValue,
-      studentName: selectedStudent.name || selectedStudent.studentName,
+      "Reg No": regValue,
+      "Reg No/ Student ID": regValue,
+      studentName: selectedStudent.name || selectedStudent.studentName || selectedStudent["Student Name"],
       rollNo: rollNo,
       motherName: motherName,
       photoBase64: capturedBase64
