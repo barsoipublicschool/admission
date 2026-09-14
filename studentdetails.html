@@ -73,7 +73,7 @@
   </div>
 
   <div class="details-card" id="detailsCard">
-    <p><strong>Reg No:</strong> <span id="lblReg"></span></p>
+    <p><strong>Reg No/ Student ID:</strong> <span id="lblReg"></span></p>
     <p><strong>Student Name:</strong> <span id="lblName"></span></p>
     <p><strong>Father Name:</strong> <span id="lblFather"></span></p>
     <p><strong>DOB:</strong> <span id="lblDob"></span></p>
@@ -157,7 +157,8 @@
     select.innerHTML = '<option value="">-- Select Student --</option>';
     
     studentsData.forEach((st, idx) => {
-      select.innerHTML += `<option value="${idx}">${st.name || st.studentName} (${st.regNo || 'No ID'})</option>`;
+      const regVal = st["Reg No/ Student ID"] || st.regNo || st.studentId || 'No ID';
+      select.innerHTML += `<option value="${idx}">${st.name || st.studentName} (${regVal})</option>`;
     });
 
     document.getElementById('studentGroup').style.display = 'block';
@@ -173,7 +174,7 @@
 
     selectedStudent = studentsData[index];
 
-    document.getElementById('lblReg').innerText = selectedStudent.regNo || '-';
+    document.getElementById('lblReg').innerText = selectedStudent["Reg No/ Student ID"] || selectedStudent.regNo || selectedStudent.studentId || '-';
     document.getElementById('lblName').innerText = selectedStudent.name || selectedStudent.studentName || '-';
     document.getElementById('lblFather').innerText = selectedStudent.fatherName || '-';
     document.getElementById('lblDob').innerText = selectedStudent.dob || '-';
@@ -253,10 +254,13 @@
 
     if (!selectedStudent) return;
 
+    const regValue = selectedStudent["Reg No/ Student ID"] || selectedStudent.regNo || "";
+
     const payload = {
       className: document.getElementById('classSelect').value,
       rowIndex: selectedStudent.rowIndex,
-      regNo: selectedStudent.regNo,
+      "Reg No/ Student ID": regValue,
+      regNo: regValue,
       studentName: selectedStudent.name || selectedStudent.studentName,
       rollNo: rollNo,
       motherName: motherName,
